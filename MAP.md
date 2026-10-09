@@ -2,6 +2,13 @@
 
 Static sponsor-pitch site. A 3D MEDCMU FC home kit (shirt + shorts) spins horizontally with drag/flick inertia; tappable markers show each sponsor slot. No backend, no build step. **Draft 3.**
 
+## Deploy / update
+Live: https://namoshai.github.io/medcmu-fc/ (repo `NamoShai/medcmu-fc`, public, GitHub Pages from `main` / root). To update: edit, test locally, then
+```
+git add -A && git commit -m "what changed" && git push
+```
+Pages rebuilds in about a minute (`gh api repos/NamoShai/medcmu-fc/pages/builds/latest --jq .status`). `.gitignore` keeps `models_src/`, `screenshots/` and `assets/src/` out of the repo; asset paths are case-sensitive on the live site.
+
 ## Run
 ```
 cd D:\Claude\MedCMU_FC_Locker
