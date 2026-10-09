@@ -1,0 +1,9 @@
+models_src/
+screenshots/
+node_modules/
+.sketchfab_token
+*.pdf
+*.log
+.playwright-mcp/
+__pycache__/
+assets/src/

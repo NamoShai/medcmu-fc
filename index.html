@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEDCMU FC Locker Room</title>
+<meta name="description" content="Spin the MEDCMU FC kit in 3D and see every sponsorship placement.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600&family=Noto+Sans+Thai:wght@400;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%237a1220%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-in">
+    <span class="brand">MEDCMU FC</span>
+    <nav>
+      <a href="#placements">Placements</a>
+      <a href="#packages">Packages</a>
+      <a href="#partners">Partners</a>
+      <a href="#why">Why sponsor</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <div class="hero-copy">
+    <p class="eyebrow">Sponsor partnership</p>
+    <h1>The MEDCMU FC kit, placement by placement.</h1>
+    <p class="lede">Drag the kit to turn it, or flick it to let it spin. Scroll or pinch to zoom in close. Tap a marker to see what each position offers and whether it is still available.</p>
+    <ul class="legend">
+      <li><span class="dot dot-taken"></span>Partner</li>
+      <li><span class="dot dot-open"></span>Available</li>
+    </ul>
+  </div>
+
+  <div class="stage-col">
+    <div class="stage" id="stage">
+      <div id="three" aria-label="3D MEDCMU FC home kit, maroon damask shirt and black shorts. Drag left or right to rotate."></div>
+      <div id="hotspots"></div>
+      <p class="hint" id="hint"><span class="h-fine">Drag to rotate, scroll to zoom</span><span class="h-touch">Drag to rotate, pinch to zoom</span></p>
+      <p class="loading" id="loading">Loading kit</p>
+    </div>
+    <div class="chips" role="group" aria-label="View">
+      <button class="chip" data-view="0">Front</button>
+      <button class="chip" data-view="90">Left</button>
+      <button class="chip" data-view="180">Back</button>
+      <button class="chip" data-view="270">Right</button>
+      <span class="zoomctl" role="group" aria-label="Zoom"><button class="zbtn" id="z-out" aria-label="Zoom out">&minus;</button><button class="zbtn" id="z-in" aria-label="Zoom in">+</button><button class="zbtn wide" id="z-reset">Reset view</button></span>
+    </div>
+    <aside class="card" id="card" hidden aria-live="polite">
+      <button class="card-x" id="card-x" aria-label="Close">&times;</button>
+      <span class="badge" id="c-status"></span>
+      <h2 id="c-name"></h2>
+      <dl>
+        <dt>Sponsor</dt><dd id="c-sponsor"></dd>
+        <dt>Package</dt><dd id="c-pack"></dd>
+        <dt>Size</dt><dd id="c-size"></dd>
+        <dt>Visibility</dt><dd id="c-vis"></dd>
+        <dt>Price</dt><dd id="c-price"></dd>
+      </dl>
+    </aside>
+  </div>
+</section>
+
+<section id="placements" class="wrap block">
+  <h2 class="h2">Sponsorship placements</h2>
+  <p class="sub">Positions and per-spot prices as set out in the MEDCMU FC sponsor proposal 2569. Sizes for the front and sleeve spots are not stated in the proposal.</p>
+  <div class="table" id="slot-table"></div>
+</section>
+
+<section id="packages" class="wrap block">
+  <h2 class="h2">Sponsorship packages</h2>
+  <p class="sub">Three tiers, priced per spot. Shops sponsoring more than 5,000 THB also receive one free football kit set in a colour of their choice. MEDCMU FC also posts each sponsor on Instagram (<b>@medcmufc</b>) for free.</p>
+  <div class="tiers" id="tier-list"></div>
+</section>
+
+<section id="partners" class="wrap block">
+  <h2 class="h2">Current partners</h2>
+  <div class="partners" id="partner-list"></div>
+</section>
+
+<section id="why" class="wrap block">
+  <h2 class="h2">Why sponsor MEDCMU FC</h2>
+  <p class="sub">Figures are taken from the sponsor proposal. The two placeholders are not in the proposal and will be replaced with club data.</p>
+  <div class="stats" id="stat-list"></div>
+</section>
+
+<section id="contact" class="wrap block contact">
+  <h2 class="h2">Talk to us</h2>
+  <div class="contact-row" id="contact-row"></div>
+</section>
+</main>
+
+<footer class="wrap foot"><p>Draft 2. Prices and package terms are from the MEDCMU FC sponsor proposal 2569.</p><p id="credit"></p></footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
