@@ -4,7 +4,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import {
   PX_PER_UV_HI, PX_PER_UV_LO, SHIRT_WINDOW, M_PER_UV, COLOURS, DAMASK, ASSETS, TIER_COLOURS, TIERS,
-  SLOTS, CLUB_MARKS, STRIPE, SHORTS_DECALS, PARTNERS, STATS, STAT_PLACEHOLDERS, CONTACT, MODEL_CREDIT,
+  SLOTS, CLUB_MARKS, STRIPE, RAGLAN, COLLAR, SHORTS_DECALS, PARTNERS, STATS, STAT_PLACEHOLDERS, CONTACT, MODEL_CREDIT,
 } from './kit.js';
 
 const $ = (id) => document.getElementById(id);
@@ -170,9 +170,6 @@ function paintSlot(ctx, s, imgs, k, X, Y) {
     const im = imgs[s.logo], r = im.width / im.height;
     let dw = w, dh = w / r; if (s.h && dh > h) { dh = h; dw = h * r; }
     ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh);
-  } else if (s.kind === 'text') {
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    fitText(ctx, s.text, w, 'Cinzel, serif'); ctx.fillText(s.text, 0, 0);
   } else if (s.kind === 'name') {
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const sz = fitText(ctx, s.text, w, 'Cinzel, serif'); ctx.fillText(s.text, 0, -w * 0.46);
@@ -181,9 +178,73 @@ function paintSlot(ctx, s, imgs, k, X, Y) {
   ctx.restore();
 }
 
-// side-panel shape in front-panel UV, left side (uS = where the side seam is); mirrored for the right side, offset for the back panel
-const lensPts = (uS) => [[uS - 0.04, 0.752], [uS + 0.003, 0.752], [uS + 0.05, 0.716], [uS + 0.058, 0.665], [uS + 0.048, 0.615], [uS + 0.022, 0.568], [uS + 0.004, 0.545], [uS - 0.04, 0.545]];
-const lensEdge = (uS) => [[uS + 0.002, 0.748], [uS + 0.05, 0.716], [uS + 0.058, 0.665], [uS + 0.048, 0.615], [uS + 0.022, 0.568], [uS + 0.004, 0.548]];
+// centripetal Catmull-Rom through the anchor points -> dense polyline (smooth, no overshoot on uneven spacing)
+function smooth(pts, n = 16) {
+  const n0 = pts.length, ext = (a, b) => [2 * a[0] - b[0], 2 * a[1] - b[1]];      // mirrored end points, so the end segments are not degenerate
+  const P = [ext(pts[0], pts[1]), ...pts, ext(pts[n0 - 1], pts[n0 - 2])], out = [];
+  const t = (a, b) => Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1]));
+  for (let i = 1; i < P.length - 2; i++) {
+    const [p0, p1, p2, p3] = [P[i - 1], P[i], P[i + 1], P[i + 2]];
+    const t0 = 0, t1 = t0 + t(p0, p1), t2 = t1 + t(p1, p2), t3 = t2 + t(p2, p3);
+    for (let k = 0; k < n; k++) {
+      const x = t1 + ((t2 - t1) * k) / n, q = [0, 1].map((d) => {
+        const A1 = ((t1 - x) * p0[d] + (x - t0) * p1[d]) / (t1 - t0), A2 = ((t2 - x) * p1[d] + (x - t1) * p2[d]) / (t2 - t1), A3 = ((t3 - x) * p2[d] + (x - t2) * p3[d]) / (t3 - t2);
+        const B1 = ((t2 - x) * A1 + (x - t0) * A2) / (t2 - t0), B2 = ((t3 - x) * A2 + (x - t1) * A3) / (t3 - t1);
+        return ((t2 - x) * B1 + (x - t1) * B2) / (t2 - t1);
+      });
+      out.push(q);
+    }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// damask: one continuous pattern across the whole UV sheet, scaled to a real-world repeat size, so pieces never stretch
+function paintDamask(ctx, imgs, k, w, h) {
+  const pat = ctx.createPattern(imgs.damask, 'repeat');
+  const s = ((DAMASK.tileCm / 100 / M_PER_UV) * k) / imgs.damask.width;
+  pat.setTransform(new DOMMatrix([s, 0, 0, s, 0, 0]));
+  ctx.fillStyle = pat; ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = COLOURS.tone; ctx.fillRect(0, 0, w, h);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+// the damask as a neutral grey tile (mean 128), used to carry the fabric texture into the blue so it is printed into the cloth like the maroon
+function greyDamask(imgs) {
+  if (imgs.damaskGrey) return imgs.damaskGrey;
+  const c = document.createElement('canvas'); c.width = imgs.damask.width; c.height = imgs.damask.height;
+  const x = c.getContext('2d'); x.drawImage(imgs.damask, 0, 0);
+  const d = x.getImageData(0, 0, c.width, c.height), px = d.data; let sum = 0;
+  for (let i = 0; i < px.length; i += 4) { px[i] = 0.3 * px[i] + 0.59 * px[i + 1] + 0.11 * px[i + 2]; sum += px[i]; }
+  const gain = 128 / (sum / (px.length / 4));
+  for (let i = 0; i < px.length; i += 4) px[i] = px[i + 1] = px[i + 2] = Math.min(255, px[i] * gain);
+  x.putImageData(d, 0, 0);
+  return (imgs.damaskGrey = c);
+}
+// solid blue with the damask relief laid over it (soft-light), so it matches everywhere it is used
+function paintBlue(ctx, imgs, k, x, y, w, h) {
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  ctx.fillStyle = COLOURS.blue; ctx.fillRect(x, y, w, h);
+  const pat = ctx.createPattern(greyDamask(imgs), 'repeat'), s = ((DAMASK.tileCm / 100 / M_PER_UV) * k) / imgs.damask.width;
+  pat.setTransform(new DOMMatrix([s, 0, 0, s, 0, 0]));
+  ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = 0.85; ctx.fillStyle = pat; ctx.fillRect(x, y, w, h);
+  ctx.restore();
+}
+
+function buildCollarTexture(imgs) {
+  const W = COLLAR.window, du = W.u1 - W.u0, dv = W.v1 - W.v0, k = PX_PER_UV;
+  const cv = document.createElement('canvas'); cv.width = Math.round(du * k); cv.height = Math.round(dv * k);
+  const ctx = cv.getContext('2d');
+  paintDamask(ctx, imgs, k, cv.width, cv.height);
+  for (const [v0, v1] of COLLAR.strips) paintBlue(ctx, imgs, k, 0, (W.v1 - (v1 - (v1 - v0) * COLLAR.band[0])) * k, cv.width, (v1 - v0) * (COLLAR.band[1] - COLLAR.band[0]) * k);
+  const [s0, s1] = COLLAR.strips[COLLAR.stripe.strip];      // the centre stripe runs on across the front of the collar
+  paintBlue(ctx, imgs, k, (COLLAR.stripe.u0 - W.u0) * k, (W.v1 - s1) * k, (COLLAR.stripe.u1 - COLLAR.stripe.u0) * k, (s1 - s0) * k);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = MAX_ANISO;
+  tex.repeat.set(1 / du, 1 / dv); tex.offset.set(-W.u0 / du, -W.v0 / dv);
+  return tex;
+}
 
 function buildShirtTexture(imgs, trim) {
   const W = SHIRT_WINDOW, du = W.u1 - W.u0, dv = W.v1 - W.v0, k = PX_PER_UV, sc = k / 2800;
@@ -191,50 +252,49 @@ function buildShirtTexture(imgs, trim) {
   const ctx = cv.getContext('2d');
   const X = (u) => (u - W.u0) * k, Y = (v) => (W.v1 - v) * k;
 
-  // damask: one continuous pattern across the whole UV sheet, scaled to a real-world repeat size, so pieces never stretch
-  const pat = ctx.createPattern(imgs.damask, 'repeat');
-  const s = ((DAMASK.tileCm / 100 / M_PER_UV) * k) / imgs.damask.width;
-  pat.setTransform(new DOMMatrix([s, 0, 0, s, 0, 0]));
-  ctx.fillStyle = pat; ctx.fillRect(0, 0, cv.width, cv.height);
-  ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = COLOURS.tone; ctx.fillRect(0, 0, cv.width, cv.height);
-  ctx.globalCompositeOperation = 'source-over';
+  paintDamask(ctx, imgs, k, cv.width, cv.height);
 
   const path = (pts) => { ctx.beginPath(); pts.forEach(([u, v], i) => (i ? ctx.lineTo(X(u), Y(v)) : ctx.moveTo(X(u), Y(v)))); };
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
 
-  // dark chest stripe from the collar, fading a little towards its foot
-  const g = ctx.createLinearGradient(0, Y(STRIPE.vTop), 0, Y(STRIPE.vBottom));
-  g.addColorStop(0, 'rgba(5,0,2,0.98)'); g.addColorStop(1, 'rgba(22,0,5,0.85)');
-  ctx.fillStyle = g; ctx.fillRect(X(STRIPE.u0), Y(STRIPE.vTop), (STRIPE.u1 - STRIPE.u0) * k, (STRIPE.vTop - STRIPE.vBottom) * k);
+  // centre stripe: collar to hem, fading out behind the big front logo (alpha profile from the PSG reference)
+  const sa = (v) => STRIPE.alpha * Math.max(smoothstep(STRIPE.clear0, STRIPE.solidAbove, v), smoothstep(STRIPE.clear1, STRIPE.solidBelow, v));
+  const sw = Math.round(STRIPE.w * k), sh = Math.round((STRIPE.vTop - STRIPE.vBottom) * k), so = document.createElement('canvas');
+  so.width = sw; so.height = sh;
+  const sx = so.getContext('2d'); paintBlue(sx, imgs, k, 0, 0, sw, sh);
+  const g = sx.createLinearGradient(0, 0, 0, sh);                   // alpha mask: solid, fading out behind the logo, slowly back in
+  for (let i = 0; i <= 160; i++) { const f = i / 160; g.addColorStop(f, `rgba(0,0,0,${sa(STRIPE.vTop + (STRIPE.vBottom - STRIPE.vTop) * f).toFixed(4)})`); }
+  sx.globalCompositeOperation = 'destination-in'; sx.fillStyle = g; sx.fillRect(0, 0, sw, sh);
+  // composite in linear light: a plain sRGB alpha blend of maroon into blue passes through a dark, muddy purple; blending light gives a clean gradient
+  const bx = Math.round(X(STRIPE.u - STRIPE.w / 2)), by = Math.round(Y(STRIPE.vTop)), base = ctx.getImageData(bx, by, sw, sh), top = sx.getImageData(0, 0, sw, sh);
+  const lin = new Float32Array(256).map((_, i) => Math.pow(i / 255, 2.2));
+  for (let i = 0; i < base.data.length; i += 4) {
+    const al = top.data[i + 3] / 255; if (al === 0) continue;
+    for (let c = 0; c < 3; c++) base.data[i + c] = 255 * Math.pow((1 - al) * lin[base.data[i + c]] + al * lin[top.data[i + c]], 1 / 2.2);
+  }
+  ctx.putImageData(base, bx, by);
 
-  // mesh side panels under the arms, front and back: dark grey with a fine light grid, white piping on the inner edge
+  // raglan piping and mesh side panels, front and back, left and right (mirrored about each panel's centre line)
+  const mirror = (c) => (pts) => pts.map(([u, v]) => [2 * c - u, v]);
   const panels = [];
-  for (const [off, vOff] of [[0, 0], [0.39, -0.025]]) {
-    for (const mirror of [false, true]) {
-      const place = (pts) => pts.map(([u, v]) => [mirror ? 2 * (0.17 + off) - (u + off) : u + off, v + vOff]);
-      panels.push({ poly: place(lensPts(0.034)), edge: place(lensEdge(0.034)) });
-    }
+  for (const r of RAGLAN) {
+    const line = smooth(r.line), top = line.findIndex(([, v]) => v <= r.apex), end = line.findIndex(([, v]) => v <= r.tip);
+    const far = r.seam[0] - 0.04, poly = [[far, r.apex], ...line.slice(top, end + 1), r.seam, [far, r.seam[1]]];   // `far` = well outside the side seam, clipped by the geometry
+    for (const m of [(p) => p, mirror(r.centre)]) panels.push({ poly: m(poly), line: m(line), diag: m([line[end], r.seam]) });
   }
   for (const p of panels) {
     ctx.save(); path(p.poly); ctx.closePath(); ctx.clip();
     ctx.fillStyle = COLOURS.mesh; ctx.fillRect(0, 0, cv.width, cv.height);
-    ctx.strokeStyle = 'rgba(215,215,222,0.62)'; ctx.lineWidth = 2.2 * sc; ctx.beginPath();
-    const step = 12 * sc;
+    ctx.strokeStyle = 'rgba(215,215,222,0.5)'; ctx.lineWidth = 1.0 * sc; ctx.beginPath();
+    const step = 4.8 * sc;
     for (let x = 0; x < cv.width; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, cv.height); }
     for (let y = 0; y < cv.height; y += step) { ctx.moveTo(0, y); ctx.lineTo(cv.width, y); }
     ctx.stroke(); ctx.restore();
-    ctx.strokeStyle = COLOURS.piping; ctx.lineWidth = 14 * sc; path(p.edge); ctx.stroke();
+    ctx.strokeStyle = COLOURS.piping; ctx.lineWidth = 14 * sc; path(p.line); ctx.stroke(); path(p.diag); ctx.stroke();
   }
 
-  // sleeves: thin dark purple-navy cuff band (full width, past the hem edge so no sliver shows), white piping along the cap seam
-  for (const sl of trim.sleeves) {
-    ctx.fillStyle = COLOURS.collar;
-    ctx.fillRect(X(sl.u0 - 0.01), Y(sl.hem + 0.009), (sl.u1 - sl.u0 + 0.02) * k, 0.05 * k);
-    ctx.strokeStyle = COLOURS.piping; ctx.lineWidth = 14 * sc; path(sl.cap); ctx.stroke();
-  }
-  // armhole piping on the body panels
-  ctx.strokeStyle = COLOURS.piping; ctx.lineWidth = 14 * sc;
-  for (const a of trim.armholes) { path(a); ctx.stroke(); }
+  // sleeve cuffs: a blue band with a thin maroon edge below it (the cuff is a plain rectangle in the sleeve's UV island)
+  for (const sl of trim.sleeves) paintBlue(ctx, imgs, k, X(sl.u0 - 0.01), Y(sl.hem + 0.020), (sl.u1 - sl.u0 + 0.02) * k, 0.012 * k);
 
   for (const m of CLUB_MARKS) paintSlot(ctx, m, imgs, k, X, Y);
   for (const sl of SLOTS) if (sl.status === 'taken') paintSlot(ctx, sl, imgs, k, X, Y);
@@ -291,7 +351,7 @@ function addSway(mat, top, bottom, sleeveX, strength, overlay) {
     sh.uniforms.uAxis = { value: axis };
     if (overlay) sh.uniforms.uOver = { value: overlay };
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uLag; uniform vec4 uSway; uniform vec2 uAxis; varying float vOutSgn;')
+      .replace('#include <common>', '#include <common>\nuniform float uLag; uniform vec4 uSway; uniform vec2 uAxis; varying float vOutSgn; varying vec3 vRadV; varying float vMid;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         float swH = clamp((uSway.x - position.y) / (uSway.x - uSway.y), 0.0, 1.0);        // 0 at the shoulder, 1 at the hem
         float swS = smoothstep(uSway.z, uSway.z + 0.09, abs(position.x - uAxis.x));        // sleeves: distance from the body
@@ -301,13 +361,17 @@ function addSway(mat, top, bottom, sleeveX, strength, overlay) {
         transformed.xz += normalize(swR + 1e-5) * abs(uLag) * 0.18 * swW;                   // and flare a touch outward
         // is the stored normal pointing away from the body axis? (the source mixes inward and outward shells)
         vec2 swN = normalize(normal.xz + 1e-5); float swRad = dot(swN, normalize(swR + 1e-5)) * length(normal.xz);
-        vOutSgn = abs(swRad) > 0.4 ? sign(swRad) : 0.0;`);
+        vOutSgn = abs(swRad) > 0.4 ? sign(swRad) : 0.0;
+        vRadV = normalize(normalMatrix * vec3(swR.x, 0.0, swR.y)); vMid = abs(swR.x) < 0.09 ? 1.0 : 0.0;`);
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vOutSgn;' + (overlay ? '\nuniform sampler2D uOver;' : ''))
+      .replace('#include <common>', '#include <common>\nvarying float vOutSgn; varying vec3 vRadV; varying float vMid;' + (overlay ? '\nuniform sampler2D uOver;' : ''))
       .replace('#include <map_fragment>', `#include <map_fragment>
         ${overlay ? 'vec4 ovl = texture2D(uOver, vMapUv); diffuseColor.rgb = mix(diffuseColor.rgb, ovl.rgb, ovl.a);' : ''}
         // the inside of the garment (seen through the neck and hem) is plain, dark lining, not the printed outside
-        if (vOutSgn * (gl_FrontFacing ? 1.0 : -1.0) < 0.0) diffuseColor.rgb *= 0.1;`);
+        float swIn = vOutSgn * (gl_FrontFacing ? 1.0 : -1.0);
+        // the stored normals are unreliable near the neck: in the middle of the torso also treat anything on the far side of the body axis from the camera as inside (not the sleeves)
+        if (vMid > 0.5 && dot(normalize(vRadV), normalize(vViewPosition)) < -0.15) swIn = -1.0;
+        if (swIn < 0.0) diffuseColor.rgb = vec3(0.02);   // plain dark lining: no printed pattern shows through`);
   };
   mat.customProgramCacheKey = () => (overlay ? 'sway-ov' : 'sway-v1');
 }
@@ -534,11 +598,42 @@ async function boot() {
   addSway(shortsMat, shortsBox.max.y, shortsBox.min.y, 9, 0.85);
   const liningMat = new THREE.MeshPhysicalMaterial({ ...fabric, color: new THREE.Color('#101010'), roughness: 0.95, sheen: 0 });
   addSway(liningMat, shortsBox.max.y, shortsBox.min.y, 9, 0.85);
-  const collarMat = new THREE.MeshPhysicalMaterial({ ...fabric, color: new THREE.Color(COLOURS.collar), roughness: 0.85, sheen: 0.3, sheenColor: new THREE.Color('#4a4390') });
+  const capMat = new THREE.MeshPhysicalMaterial({ ...fabric, color: 0xffffff, vertexColors: true, roughness: 0.95, sheen: 0, side: THREE.FrontSide });
+  addSway(capMat, yTop, yHem, 0.17, 1.0);
+  const collarMat = new THREE.MeshPhysicalMaterial({ ...fabric, map: buildCollarTexture(imgs), normalMap: nrm, normalScale: new THREE.Vector2(0.3, 0.3), roughness: 0.85 });   // maroon with a blue band, on its own sheet (the collar UVs overlap the shirt panels)
 
   M.shirt_back.material = M.shirt_front.material = shirtMat;
   M.shorts.material = shortsMat; M.shorts_lining.material = M.waistband.material = liningMat; M.collar.material = collarMat;
   Object.values(M).forEach((m) => { m.frustumCulled = false; kit.add(m); });
+
+  // sleeve openings: the perforated sleeve shell shows ragged holes and the printed inner wall through the cuff. Plug each sleeve with a dark
+  // tube (an ellipse fitted to the cuff, a little narrower than the printed wall, 9 cm deep, closed at the top) so the inside reads as plain dark cloth.
+  for (const side of [1, -1]) {
+    const p = M.shirt_front.geometry.attributes.position;
+    let yMin = 9; for (let i = 0; i < p.count; i++) if (side * p.getX(i) > 0.17 && p.getY(i) > 1.3) yMin = Math.min(yMin, p.getY(i));
+    // ring 0 = the cuff ellipse at the hem (fitted to the hem vertices), ring 1 = the same ellipse 9 cm up, slightly narrower; the lining is a closed tube
+    const bb = new THREE.Box3();
+    for (let i = 0; i < p.count; i++) if (side * p.getX(i) > 0.17 && p.getY(i) > 1.3 && p.getY(i) < yMin + 0.03) bb.expandByPoint(new THREE.Vector3(p.getX(i), p.getY(i), p.getZ(i)));
+    const cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2, rx = (bb.max.x - bb.min.x) / 2, rz = (bb.max.z - bb.min.z) / 2;
+    // the cuff plane is tilted (the sleeve hangs at an angle): fit y = y0 + bx*(x-cx) + bz*(z-cz) to the lowest hem vertices so the rim sits ON the hem, not below it
+    const lows = new Array(16).fill(null);                 // lowest vertex in each angular bin = the hem edge itself
+    for (let i = 0; i < p.count; i++) if (side * p.getX(i) > 0.17 && p.getY(i) > 1.3 && p.getY(i) < yMin + 0.05) {
+      const b = Math.min(15, Math.floor(((Math.atan2(p.getZ(i) - cz, p.getX(i) - cx) + Math.PI) / (2 * Math.PI)) * 16));
+      if (!lows[b] || p.getY(i) < lows[b][1]) lows[b] = [p.getX(i) - cx, p.getY(i), p.getZ(i) - cz];
+    }
+    const L = lows.filter(Boolean), m = (k) => L.reduce((s, q) => s + q[k], 0) / L.length, mx = m(0), my = m(1), mz = m(2);
+    let sxx = 0, szz = 0, sxz = 0, sxy = 0, szy = 0;
+    for (const q of L) { const dx = q[0] - mx, dz = q[2] - mz, dy = q[1] - my; sxx += dx * dx; szz += dz * dz; sxz += dx * dz; sxy += dx * dy; szy += dz * dy; }
+    const det = sxx * szz - sxz * sxz, bx = det ? (sxy * szz - szy * sxz) / det : 0, bz = det ? (szy * sxx - sxy * sxz) / det : 0, y0 = my - bx * mx - bz * mz, cnt = L.length;
+    const N = 48, pos = [], idx = [], up = 0.09;
+    for (let r = 0; r < 2; r++) for (let i = 0; i < N; i++) { const t = (i / N) * Math.PI * 2, k = 1.02 - 0.1 * r, dx = Math.cos(t) * rx * k, dz = Math.sin(t) * rz * k;
+      pos.push(cx - side * 0.03 * up * r + dx, y0 + bx * dx + bz * dz - 0.004 + up * r, cz + dz); }
+    pos.push(cx - side * 0.03 * up, yMin + up, cz);
+    const col = []; for (let i = 0; i < 2 * N + 1; i++) { const d = i < N ? 0 : 1; col.push(0.035 - 0.028 * d, 0.008 - 0.006 * d, 0.012 - 0.01 * d); }   // dark maroon at the rim, darker deeper in
+    for (let i = 0; i < N; i++) { const j2 = (i + 1) % N; idx.push(i, j2, N + i, j2, N + j2, N + i, N + i, N + j2, 2 * N); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals();
+    const plug = new THREE.Mesh(g, capMat); plug.frustumCulled = false; kit.add(plug);
+  }
 
   // soft contact shadow under the kit (a blurred radial floor that does not spin)
   const sc = document.createElement('canvas'); sc.width = sc.height = 256;

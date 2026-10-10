@@ -15,11 +15,10 @@ export const M_PER_UV = 1.55;                          // measured scale of the 
 
 export const COLOURS = {
   piping: '#ffffff',
-  collar: '#1e1a55',                                   // dark purple-navy collar and cuffs (thin bands)
+  blue: '#0a3482',                                     // royal/navy blue: collar band, cuff bands and the centre stripe
   shorts: '#151515',
   tone: 'rgb(192, 138, 148)',                          // "multiply"-blended over the damask to match the base maroon
-  mesh: '#33333a',                                     // side-panel mesh base (dark grey)
-  stripe: 'rgb(20, 0, 5)',                             // dark chest stripe
+  mesh: '#0c0c10',                                     // side-panel mesh base (near black, as in the design)
   sheen: '#a8505c',                                    // lighter maroon, for the fabric sheen
 };
 
@@ -28,7 +27,7 @@ export const DAMASK = { src: 'assets/damask_tile.jpg', tileCm: 22 };   // physic
 export const ASSETS = {
   crest: 'assets/crest.png',
   sriphat: 'assets/sriphat.png',
-  inseerhong: 'assets/inseerhong.png',
+  inseethong: 'assets/inseethong.png',
 };
 
 export const TIER_COLOURS = { gold: '#e6b422', silver: '#b9bcc1', bronze: '#b56a4c' };
@@ -53,11 +52,11 @@ export const TIERS = [
 // status: 'taken' | 'open'     tier + price come from the proposal; priced per spot.
 // uv: [u, v] centre, w: width in UV units, h: height in UV units (logos are fitted into the box)
 export const SLOTS = [
-  { id: 'front-chest', label: 'Front chest (wearer’s right)', status: 'taken', sponsor: 'Sriphat Hospital CMU', tier: 'gold', price: 20000,
-    kind: 'logo', logo: 'sriphat', uv: [0.105, 0.762], w: 0.09, h: 0.045,
+  { id: 'front-centre', label: 'Front centre (large logo)', status: 'taken', sponsor: 'Sriphat Hospital CMU', tier: 'gold', price: 20000,
+    kind: 'logo', logo: 'sriphat', uv: [0.1705, 0.692], w: 0.17, h: 0.05,
     size: 'Not stated in the proposal', visibility: 'Front of the shirt, seen head-on' },
-  { id: 'front-lower', label: 'Front, below the wordmark', status: 'open', sponsor: null, tier: 'gold', price: 20000,
-    kind: 'open', uv: [0.17, 0.59], w: 0.13, h: 0.05,
+  { id: 'front-chest', label: 'Front chest (wearer’s right)', status: 'taken', sponsor: 'Inseethong Gold (ห้างทองอินทรีทอง)', tier: 'gold', price: 20000,
+    kind: 'logo', logo: 'inseethong', uv: [0.104, 0.773], w: 0.048, h: 0.056,
     size: 'Not stated in the proposal', visibility: 'Front of the shirt, seen head-on' },
   { id: 'sleeve-left', label: 'Left sleeve', status: 'open', sponsor: null, tier: 'silver', price: 10000,
     kind: 'open', uv: [0.165, 0.248], w: 0.085, h: 0.06,
@@ -65,8 +64,8 @@ export const SLOTS = [
   { id: 'sleeve-right', label: 'Right sleeve', status: 'open', sponsor: null, tier: 'silver', price: 10000,
     kind: 'open', uv: [0.485, 0.248], w: 0.085, h: 0.06,
     size: 'Not stated in the proposal', visibility: 'Sleeve, seen from the side' },
-  { id: 'back-below-number', label: 'Back, under the player number', status: 'taken', sponsor: 'INSEERHONG GOLD', tier: 'silver', price: 10000,
-    kind: 'logo', logo: 'inseerhong', uv: [0.56, 0.575], w: 0.15, h: 0.06,
+  { id: 'back-below-number', label: 'Back, under the player number', status: 'open', sponsor: null, tier: 'silver', price: 10000,
+    kind: 'open', uv: [0.56, 0.575], w: 0.15, h: 0.06,
     size: '4 × 3 (as written in the proposal)', visibility: 'Back of the shirt, seen from behind' },
   { id: 'back-lower-1', label: 'Back, lower row (left)', status: 'open', sponsor: null, tier: 'bronze', price: 5000,
     kind: 'open', uv: [0.50, 0.516], w: 0.042, h: 0.042,
@@ -81,13 +80,31 @@ export const SLOTS = [
 
 // Club-owned marks: painted on the kit, never listed, never a hotspot.
 export const CLUB_MARKS = [
-  { kind: 'logo', logo: 'crest', uv: [0.235, 0.765], w: 0.048 },
-  { kind: 'text', text: 'MEDCMU', uv: [0.17, 0.675], w: 0.15 },
+  { kind: 'logo', logo: 'crest', uv: [0.236, 0.768], w: 0.046 },
   { kind: 'name', text: 'PLAYER', number: '9', uv: [0.56, 0.72], w: 0.19 },
 ];
 
-// Dark vertical stripe down the front chest from the collar (between the Sriphat and crest positions), UV units.
-export const STRIPE = { u0: 0.172, u1: 0.204, vTop: 0.87, vBottom: 0.705 };
+// Centre stripe, collar to hem on the FRONT only (as in the PSG reference: about 1/5 of the front width). Solid under the collar, fades to
+// nothing behind the big front logo (alpha 0 between vClear0 and vClear1) and returns, slowly, towards the hem.
+export const STRIPE = { u: 0.1705, w: 0.06, vTop: 0.835, vBottom: 0.478, solidAbove: 0.785, clear0: 0.735, clear1: 0.678, solidBelow: 0.565, alpha: 0.96 };
+
+// Raglan piping + mesh side panels, one entry per body panel (left side listed, the right side is mirrored about `centre`).
+// `line` runs from the neckline, round the shoulder, down the inner edge of the mesh panel and on to the hem (smoothed with a
+// Catmull-Rom spline at paint time). The mesh is the wedge between the armhole and `line` from `apex` (v) down to `tip` (v), closed by
+// a diagonal edge to `seam` = [u, v] on the side seam. The back panel is cut lower, so its numbers follow the 3D height of the seam.
+export const RAGLAN = [
+  { centre: 0.170, apex: 0.800, tip: 0.600, seam: [0.0215, 0.614],
+    line: [[0.108, 0.880], [0.094, 0.872], [0.078, 0.860], [0.065, 0.843], [0.058, 0.823], [0.0555, 0.800], [0.0575, 0.775], [0.0630, 0.750], [0.0695, 0.720],
+      [0.0735, 0.690], [0.0755, 0.660], [0.0755, 0.630], [0.0745, 0.600], [0.0725, 0.570], [0.0705, 0.540], [0.0685, 0.510], [0.0665, 0.481]] },
+  { centre: 0.563, apex: 0.790, tip: 0.578, seam: [0.4239, 0.590],
+    line: [[0.4985, 0.866], [0.484, 0.858], [0.4685, 0.846], [0.457, 0.830], [0.4495, 0.812], [0.4455, 0.790], [0.4478, 0.766], [0.4525, 0.742],
+      [0.4653, 0.693], [0.4720, 0.663], [0.4769, 0.633], [0.4769, 0.604], [0.4758, 0.578], [0.4725, 0.551], [0.4694, 0.526], [0.4669, 0.500], [0.4645, 0.476]] },
+];
+
+// The collar mesh is two UV strips (front neckline, back neckline) that run along u. They overlap the shirt panels in UV, so the collar has its
+// own small texture over `window`; the blue band is the middle part (`band`, fraction of the strip width) of each strip. `stripe` carries the
+// centre stripe across the front strip (u of the body centre x=0 is 0.4371; the collar runs ~0.9 m per u unit, hence 0.06 x 1.71 / 0.9 wide).
+export const COLLAR = { window: { u0: 0.29, u1: 0.584, v0: 0.445, v1: 0.622 }, strips: [[0.445, 0.493], [0.578, 0.622]], band: [0.30, 0.68], stripe: { strip: 0, u0: 0.3798, u1: 0.4944 } };
 
 // Shorts decals: the club's number and crest, as on the mockup. Not sold positions.
 export const SHORTS_DECALS = [
@@ -96,8 +113,8 @@ export const SHORTS_DECALS = [
 ];
 
 export const PARTNERS = [
-  { name: 'Sriphat Hospital CMU', slot: 'Front chest', logo: 'assets/sriphat.png' },
-  { name: 'INSEERHONG GOLD', slot: 'Back, lower row', logo: 'assets/inseerhong.png' },
+  { name: 'Sriphat Hospital CMU', slot: 'Front centre', logo: 'assets/sriphat.png' },
+  { name: 'Inseethong Gold (ห้างทองอินทรีทอง)', slot: 'Front chest', logo: 'assets/inseethong.png' },
 ];
 
 // Real figures from the proposal. Anything the proposal does not state stays a placeholder.

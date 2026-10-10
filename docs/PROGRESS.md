@@ -3,9 +3,9 @@
 Sponsor-pitch website: a 3D MEDCMU FC kit that sponsors spin, zoom and tap to see each placement and its price.
 Live: https://namoshai.github.io/medcmu-fc/ · repo `NamoShai/medcmu-fc` (public, GitHub Pages from `main`) · architecture → `MAP.md`.
 
-## Current state (2026-10-09)
+## Current state (2026-10-10, Draft 6 local, not pushed)
 - LIVE. Home kit only. Slots, tiers and prices from `CMU_Medicine_Football_Sponsor_Proposal_2569.pdf`: Gold THB 20,000 · Silver THB 10,000 · Bronze THB 5,000 per spot.
-- Partners: **Sriphat Hospital CMU**, Gold, front chest (wearer's right) · **INSEERHONG GOLD**, Silver, back under the player number.
+- Partners: **Sriphat Hospital CMU**, Gold, front centre (large white logo) · **Inseethong Gold (ห้างทองอินทรีทอง)**, Gold, front chest (wearer's right). Back spot under the number is open (Silver).
 - Stats on the page: 846,624 IG views/30 days · 3× Syringe Games champions · 35th Syringe Games 15–17 Jan 2570. Squad size and matches per season are still placeholders.
 
 ## Log
@@ -18,7 +18,12 @@ Live: https://namoshai.github.io/medcmu-fc/ · repo `NamoShai/medcmu-fc` (public
 - **2026-10-09 · Deployed** to GitHub Pages and verified live (no 404s, zero console errors).
 - **2026-10-09 · Wording.** Free kit for sponsors of "5,000 THB and up" (Namo's reading). Maroon confirmed as is. Commit made locally, **push pending**: github.com DNS was failing at the time.
 
+- **2026-10-10 · Draft 6 (local, awaiting Cloudy's review and push).** Namo's new shirt design: white Sriphat front centre, Inseethong Gold (Thai wording, rebuilt crisp from the eagle + Noto Sans Thai) on the chest opposite the crest, MEDCMU wordmark and black stripe removed, navy centre stripe fading out behind Sriphat (PSG-style, front only), maroon collar with blue band, blue cuff bands. Piping rebuilt: smooth spline lines inside the body panels (the old ones sat on UV island boundaries), mesh cut from the same line, back heights matched to the seam in 3D. Slots: Sriphat Gold, Inseethong Gold, back-under-number now open Silver, `front-lower` removed. Verified with Playwright at 1280x800 and 390x844: zero console errors, no 404s, hotspots on their logos, open spot shows its placeholder. Screenshots `screenshots/v6_*`.
+
+- **2026-10-10 · Draft 6b.** Fixes after Cloudy's review: stripe from the collar, fabric-textured blue shared with collar/cuffs, eagle level with the crest, darker mesh, neck-opening interior regression fixed. Re-verified at 1280x800 and 390x844, zero errors.
+- **2026-10-10 · Draft 6c.** Sleeve-cuff artifacts removed (dark plug inside each cuff), footer 'Draft 2' text removed. Re-verified, zero errors. Before/after: `screenshots/v6_cuff_*`.
+
 ## Open / next
 - Push the pending wording commit (`git push`), then confirm it's live.
 - Namo tests on a real phone: spin, pinch zoom, one-finger pan when zoomed, tap a spot.
-- Optional: white Sriphat logo (purple is weak on maroon), a higher-res crest (605 px source), an away kit (black/white, in the proposal), real squad-size and match stats.
+- Crest colour: design shows teal/navy + gold, ours is green; needs a clean crest source. Optional: a higher-res crest (605 px source), an away kit (black/white, in the proposal), real squad-size and match stats.

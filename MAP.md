@@ -24,8 +24,8 @@ Needs internet (three.js from jsdelivr, fonts from Google Fonts). Deploy target 
 | `kit.js` | **All kit and proposal data**: colours, damask size, slots (position, tier, THB price), tiers, partners, stats, contact, model credit. |
 | `app.js` | three.js scene, texture painter, sway shader, drag/inertia, hotspots. |
 | `assets/kit.glb` | Simplified kit (about 1 MB, meshopt, ~99k tris). Meshes: shirt_back, shirt_front (sleeves + front), collar, shorts, shorts_lining, waistband. |
-| `assets/trim.json` | Shirt outline data in UV space (armhole + sleeve polylines) for the white piping and purple cuffs. |
-| `assets/damask_tile.jpg`, `crest.png`, `sriphat.png`, `inseerhong.png` | Prepared artwork. |
+| `assets/trim.json` | Sleeve rectangles in UV space (`sleeves[].u0/u1/hem`) for the blue cuff bands. (Its `armholes` and sleeve `cap` polylines are no longer used.) |
+| `assets/damask_tile.jpg`, `crest.png`, `sriphat.png` (pure white, alpha kept), `inseethong.png` | Prepared artwork. `inseethong.png` = cleaned gold eagle (cropped from the old logo) over the Thai + Latin wording set in Noto Sans Thai, baked once in a browser canvas. |
 | `models_src/` | Git-ignored: untouched PROXY download, `build_kit_glb.mjs`, `make_trim.mjs`. |
 
 ## Rebuild the model
@@ -43,7 +43,7 @@ In a scratch folder: `npm i @gltf-transform/core @gltf-transform/functions @gltf
 ## Draft 3 design rules
 - `SLOTS` = sponsor spots only (taken/available). Club marks (crest, MEDCMU wordmark, PLAYER 9) live in `CLUB_MARKS`: painted, never listed, never a hotspot.
 - The kit shows no placeholders by default. Selecting a spot (marker or table row) repaints the shirt canvas with a quiet dashed outline for that open spot (`buildShirtTexture().select`); closing the card or selecting another spot clears it.
-- Base design colours/elements (`COLOURS`, `STRIPE`, `lensPts` in app.js): maroon `tone` multiply, dark navy collar/cuffs, dark mesh side panels with white piping front and back, dark chest stripe between the Sriphat and crest positions. Logo positions are ours, not the base image's.
+- Base design colours/elements (`COLOURS`, `STRIPE`, `RAGLAN`, `COLLAR` in kit.js): maroon `tone` multiply, blue collar band and cuff bands, dark mesh side panels, white raglan piping, navy centre stripe. Logo positions are ours, not the base image's.
 - Card sits under the view chips (all widths) so it never covers the kit.
 
 ## Draft 4 fixes
@@ -63,9 +63,19 @@ In a scratch folder: `npm i @gltf-transform/core @gltf-transform/functions @gltf
 3. Never type a price that is not in the proposal. Add to `PARTNERS` if it should appear under Current partners.
 
 ## Known limits / open points (draft 2)
-- Black mesh side panels from the 2D mockup are not modelled. Socks are not shown. Only the home kit is built (the proposal also has a black-and-white away kit).
+- Socks are not shown. Only the home kit is built (the proposal also has a black-and-white away kit).
 - Sizes of front and sleeve spots are not stated in the proposal ("Not stated in the proposal"). Back sizes are shown as written, "4 x 3" and "3 x 3", with no unit.
-- INSEERHONG GOLD holds the Silver spot under the back number (Namo, round 3). The three Bronze spots in the lower-back row are open.
-- The collar is the model's own thicker collar mesh (not a thin band like the base image).
-- Sriphat's purple logo has weak contrast on maroon (no plate, per Namo).
+- The Silver spot under the back number is open (was INSEERHONG GOLD until Draft 6). The three Bronze spots in the lower-back row are open.
 - Squad size and matches per season are not in the proposal: placeholders.
+
+## Draft 6 (new shirt design, 2026-10-10)
+- Layout follows Namo's new design: big white Sriphat front centre (Gold), Inseethong Gold (eagle + ห้างทองอินทรีทอง + Inseethong Gold) on the wearer's right chest (Gold), crest on the wearer's left chest, no MEDCMU wordmark, back spot under the number is open (Silver). The old `front-lower` slot is gone.
+- Centre stripe (`STRIPE`): navy, collar to hem, FRONT only (the PSG reference shows only the front), ~1/5 of the front width. Alpha profile is solid under the collar, fades to 0 between v 0.738 and 0.678 (behind Sriphat, plain maroon) and returns slowly towards the hem, like PSG's stripe behind QATAR AIRWAYS. The old black chest stripe is removed.
+- Piping + mesh (`RAGLAN`, `smooth()` in app.js): one anchor list per body panel (left side, mirrored about `centre`), smoothed with a centripetal Catmull-Rom spline, stroked at constant width. It runs neck -> shoulder -> inner edge of the mesh -> hem. The mesh wedge is cut from the same smoothed line, so mesh edge and piping cannot drift apart. Why the old piping looked wrong: it was painted on the armhole/sleeve-cap island BOUNDARIES (half the stroke clipped, sleeve cap a different shape from the body armhole, lines breaking at the armpit). The UV is isometric (~1.71 m per UV unit both ways, measured), so painting inside a panel does not stretch. The back panel is cut lower than the front: its heights come from matching the 3D height (y) of the side seam, not a constant offset. There is no piping on the sleeve islands now.
+- Collar and cuffs: the collar mesh is two UV strips that overlap the shirt panels in UV, so it has its own small texture (`buildCollarTexture`): maroon with a blue band. Cuffs: blue band with a thin maroon edge. Single blue `COLOURS.blue`.
+- Known limits: the crest is still the green artwork (the design's crest is teal/navy and gold, no clean source). The model has set-in sleeves, the drawing has raglan sleeves, so the line ends at the shoulder seam beside the collar rather than exactly on the collar edge. Mesh reads lighter grey than the drawing's black.
+- Draft 6b (Cloudy's review): the stripe now starts at the collar (it is also painted across the front collar strip, `COLLAR.stripe`) and, like the collar band and cuffs, is the one `COLOURS.blue` with the damask relief laid over it (`paintBlue`, soft-light) so it reads as printed into the cloth; the fade is a 160-stop alpha mask. Eagle and crest now sit at one height (v 0.768), mesh is near-black (`COLOURS.mesh`). Interior darkening: the stored normals are unreliable at the neck, so the shader also darkens anything on the far side of the body axis from the camera, only in the torso middle (|x|<0.09 so sleeves and shoulders are not hit), to pure dark lining. Crest stays green until a teal/gold source exists.
+- Sleeve cuffs (6c): the sleeve shell is perforated and the inner wall is printed, so the cuff opening showed ragged holes. Each sleeve now gets a dark tube plug (`capMat`, an ellipse fitted to the cuff, 9 cm deep, closed at the top, built in boot() right after the meshes are added); it moves with the sway. The shader-only fixes tried first (darkening by normals) cannot work there: the stored normals are unreliable. Footer 'Draft 2' text removed.
+- Draft 6d: lower stripe now composited in linear light (clean red-to-blue gradient instead of a dark purple sRGB blend); eagle raised so its top lines up with the crest top from the front camera.
+- Draft 6e: cuff lining = full cuff ellipse, dark maroon vertex-colour gradient (darker deeper in); mesh grid 2.5x finer (step 4.8, line 1.0).
+- Draft 6f: cuff plug rim is fitted to the tilted hem plane (it poked out below the cuffs in the front view before); official Inseethong logo rebuilt: eagle keyed from assets/src/inseethong_official.jpg, text Sarabun 500 white.
