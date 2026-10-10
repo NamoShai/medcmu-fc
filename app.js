@@ -626,8 +626,8 @@ async function boot() {
     for (const q of L) { const dx = q[0] - mx, dz = q[2] - mz, dy = q[1] - my; sxx += dx * dx; szz += dz * dz; sxz += dx * dz; sxy += dx * dy; szy += dz * dy; }
     const det = sxx * szz - sxz * sxz, bx = det ? (sxy * szz - szy * sxz) / det : 0, bz = det ? (szy * sxx - sxy * sxz) / det : 0, y0 = my - bx * mx - bz * mz, cnt = L.length;
     const N = 48, pos = [], idx = [], up = 0.09;
-    for (let r = 0; r < 2; r++) for (let i = 0; i < N; i++) { const t = (i / N) * Math.PI * 2, k = 1.02 - 0.1 * r, dx = Math.cos(t) * rx * k, dz = Math.sin(t) * rz * k;
-      pos.push(cx - side * 0.03 * up * r + dx, y0 + bx * dx + bz * dz - 0.004 + up * r, cz + dz); }
+    for (let r = 0; r < 2; r++) for (let i = 0; i < N; i++) { const t = (i / N) * Math.PI * 2, k = 0.97 - 0.1 * r, dx = Math.cos(t) * rx * k, dz = Math.sin(t) * rz * k;
+      pos.push(cx - side * 0.03 * up * r + dx, y0 + bx * dx + bz * dz + 0.003 + up * r, cz + dz); }
     pos.push(cx - side * 0.03 * up, yMin + up, cz);
     const col = []; for (let i = 0; i < 2 * N + 1; i++) { const d = i < N ? 0 : 1; col.push(0.035 - 0.028 * d, 0.008 - 0.006 * d, 0.012 - 0.01 * d); }   // dark maroon at the rim, darker deeper in
     for (let i = 0; i < N; i++) { const j2 = (i + 1) % N; idx.push(i, j2, N + i, j2, N + j2, N + i, N + i, N + j2, 2 * N); }

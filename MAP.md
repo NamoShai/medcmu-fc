@@ -79,3 +79,4 @@ In a scratch folder: `npm i @gltf-transform/core @gltf-transform/functions @gltf
 - Draft 6d: lower stripe now composited in linear light (clean red-to-blue gradient instead of a dark purple sRGB blend); eagle raised so its top lines up with the crest top from the front camera.
 - Draft 6e: cuff lining = full cuff ellipse, dark maroon vertex-colour gradient (darker deeper in); mesh grid 2.5x finer (step 4.8, line 1.0).
 - Draft 6f: cuff plug rim is fitted to the tilted hem plane (it poked out below the cuffs in the front view before); official Inseethong logo rebuilt: eagle keyed from assets/src/inseethong_official.jpg, text Sarabun 500 white.
+- Draft 6g: front-view dark bars under the cuffs were the lining plug (rim at k 1.02, 4 mm below the hem); proven by a plug-off toggle (clean), now k 0.97 and 3 mm above the hem.
