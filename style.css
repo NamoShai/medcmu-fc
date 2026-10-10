@@ -132,3 +132,9 @@ h1 { margin: 0; font-weight: 600; font-size: clamp(28px, 5vw, 44px); line-height
 .zbtn:hover { border-color: var(--maroon); }
 .h-touch { display: none; }
 @media (pointer: coarse) { .h-fine { display: none; } .h-touch { display: inline; } }
+
+.jerseys { display: inline-flex; gap: 4px; padding: 4px; margin-bottom: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; }
+.jbtn { font: 600 14px Inter, sans-serif; min-height: 44px; min-width: 112px; padding: 0 22px; border-radius: 999px; border: 0; background: none; color: var(--muted); cursor: pointer; transition: background .2s, color .2s; }
+.jbtn:hover { color: var(--ink); }
+.jbtn.active { background: var(--maroon); color: var(--maroon-ink); }
+.jbtn:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }

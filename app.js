@@ -4,7 +4,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import {
   PX_PER_UV_HI, PX_PER_UV_LO, SHIRT_WINDOW, M_PER_UV, COLOURS, DAMASK, ASSETS, TIER_COLOURS, TIERS,
-  SLOTS, CLUB_MARKS, STRIPE, RAGLAN, COLLAR, SHORTS_DECALS, PARTNERS, STATS, STAT_PLACEHOLDERS, CONTACT, MODEL_CREDIT,
+  SLOTS, RAGLAN, JERSEYS, SHORTS_DECALS, PARTNERS, STATS, STAT_PLACEHOLDERS, CONTACT, MODEL_CREDIT,
 } from './kit.js';
 
 const $ = (id) => document.getElementById(id);
@@ -70,7 +70,8 @@ const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-const key = new THREE.DirectionalLight(0xfff4ea, 1.5); key.position.set(1.6, 2.4, 3.2); scene.add(key);
+const key = new THREE.DirectionalLight(0xfff1e4, 1.75); key.position.set(1.9, 2.4, 3.0);   // low, raking from the wearer's left so the folds throw soft shade
+const fill = new THREE.DirectionalLight(0xffeef0, 0.9); fill.position.set(-2.2, 1.0, 3.0); scene.add(fill); scene.add(key);
 const rim = new THREE.DirectionalLight(0xdfe8ff, 1.1); rim.position.set(-2.4, 1.6, -2.6); scene.add(rim);
 
 const camera = new THREE.PerspectiveCamera(24, 1, 0.1, 30);
@@ -223,30 +224,38 @@ function greyDamask(imgs) {
   return (imgs.damaskGrey = c);
 }
 // solid blue with the damask relief laid over it (soft-light), so it matches everywhere it is used
-function paintBlue(ctx, imgs, k, x, y, w, h) {
+function paintBlue(ctx, imgs, k, x, y, w, h, colour = COLOURS.blue, clipPath) {
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-  ctx.fillStyle = COLOURS.blue; ctx.fillRect(x, y, w, h);
+  if (clipPath) { clipPath(); ctx.clip(); }
+  ctx.fillStyle = colour; ctx.fillRect(x, y, w, h);
   const pat = ctx.createPattern(greyDamask(imgs), 'repeat'), s = ((DAMASK.tileCm / 100 / M_PER_UV) * k) / imgs.damask.width;
   pat.setTransform(new DOMMatrix([s, 0, 0, s, 0, 0]));
-  ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = 0.85; ctx.fillStyle = pat; ctx.fillRect(x, y, w, h);
+  ctx.globalCompositeOperation = 'soft-light'; ctx.globalAlpha = colour === COLOURS.blue ? 0.85 : 0.4; ctx.fillStyle = pat; ctx.fillRect(x, y, w, h);
   ctx.restore();
 }
 
-function buildCollarTexture(imgs) {
+function buildCollarTexture(imgs, J) {
+  const COLLAR = J.collar;
   const W = COLLAR.window, du = W.u1 - W.u0, dv = W.v1 - W.v0, k = PX_PER_UV;
   const cv = document.createElement('canvas'); cv.width = Math.round(du * k); cv.height = Math.round(dv * k);
   const ctx = cv.getContext('2d');
   paintDamask(ctx, imgs, k, cv.width, cv.height);
-  for (const [v0, v1] of COLLAR.strips) paintBlue(ctx, imgs, k, 0, (W.v1 - (v1 - (v1 - v0) * COLLAR.band[0])) * k, cv.width, (v1 - v0) * (COLLAR.band[1] - COLLAR.band[0]) * k);
-  const [s0, s1] = COLLAR.strips[COLLAR.stripe.strip];      // the centre stripe runs on across the front of the collar
-  paintBlue(ctx, imgs, k, (COLLAR.stripe.u0 - W.u0) * k, (W.v1 - s1) * k, (COLLAR.stripe.u1 - COLLAR.stripe.u0) * k, (s1 - s0) * k);
+  for (const [v0, v1] of COLLAR.strips) paintBlue(ctx, imgs, k, 0, (W.v1 - (v1 - (v1 - v0) * COLLAR.band[0])) * k, cv.width, (v1 - v0) * (COLLAR.band[1] - COLLAR.band[0]) * k, COLLAR.bandColour);
+  if (COLLAR.stripe) {                                      // Jersey 1: the centre stripe runs on across the front of the collar
+    const [s0, s1] = COLLAR.strips[COLLAR.stripe.strip];
+    paintBlue(ctx, imgs, k, (COLLAR.stripe.u0 - W.u0) * k, (W.v1 - s1) * k, (COLLAR.stripe.u1 - COLLAR.stripe.u0) * k, (s1 - s0) * k);
+  }
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = MAX_ANISO;
   tex.repeat.set(1 / du, 1 / dv); tex.offset.set(-W.u0 / du, -W.v0 / dv);
   return tex;
 }
 
-function buildShirtTexture(imgs, trim) {
+const slotsFor = (J) => SLOTS.map((s) => ({ ...s, ...(J.slots[s.id] || {}) }));   // Jersey 2 moves some UV rects; ids, tiers and prices are shared
+let curSlots = SLOTS;
+
+function buildShirtTexture(imgs, trim, J) {
+  const STRIPE = J.stripe, slots = slotsFor(J);
   const W = SHIRT_WINDOW, du = W.u1 - W.u0, dv = W.v1 - W.v0, k = PX_PER_UV, sc = k / 2800;
   const cv = document.createElement('canvas'); cv.width = Math.round(du * k); cv.height = Math.round(dv * k);
   const ctx = cv.getContext('2d');
@@ -257,16 +266,25 @@ function buildShirtTexture(imgs, trim) {
   const path = (pts) => { ctx.beginPath(); pts.forEach(([u, v], i) => (i ? ctx.lineTo(X(u), Y(v)) : ctx.moveTo(X(u), Y(v)))); };
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
 
-  // centre stripe: collar to hem, fading out behind the big front logo (alpha profile from the PSG reference)
-  const sa = (v) => STRIPE.alpha * Math.max(smoothstep(STRIPE.clear0, STRIPE.solidAbove, v), smoothstep(STRIPE.clear1, STRIPE.solidBelow, v));
-  const sw = Math.round(STRIPE.w * k), sh = Math.round((STRIPE.vTop - STRIPE.vBottom) * k), so = document.createElement('canvas');
+  // centre stripe: collar to hem, fading out behind the big front logo. A trapezoid between two reference heights (vA, vB), extended up to vTop.
+  const st = { uA: STRIPE.u, wA: STRIPE.w, vA: STRIPE.vTop, uB: STRIPE.u, wB: STRIPE.w, vB: STRIPE.vBottom, min: 0, ...STRIPE };
+  const lerpV = (f, v) => { const t = (v - st.vA) / (st.vB - st.vA); return st[f + 'A'] + (st[f + 'B'] - st[f + 'A']) * t; };
+  const sa = (v) => Math.max(st.min, STRIPE.alpha * Math.max(smoothstep(STRIPE.clear0, STRIPE.solidAbove, v), smoothstep(STRIPE.clear1, STRIPE.solidBelow, v)));
+  const uL = Math.min(lerpV('u', STRIPE.vTop) - lerpV('w', STRIPE.vTop) / 2, lerpV('u', STRIPE.vBottom) - lerpV('w', STRIPE.vBottom) / 2);
+  const uR = Math.max(lerpV('u', STRIPE.vTop) + lerpV('w', STRIPE.vTop) / 2, lerpV('u', STRIPE.vBottom) + lerpV('w', STRIPE.vBottom) / 2);
+  const sw = Math.round((uR - uL) * k), sh = Math.round((STRIPE.vTop - STRIPE.vBottom) * k), so = document.createElement('canvas');
   so.width = sw; so.height = sh;
-  const sx = so.getContext('2d'); paintBlue(sx, imgs, k, 0, 0, sw, sh);
+  const sx = so.getContext('2d');
+  const trap = () => { sx.beginPath();
+    const top = STRIPE.vTop, bot = STRIPE.vBottom;
+    sx.moveTo((lerpV('u', top) - lerpV('w', top) / 2 - uL) * k, 0); sx.lineTo((lerpV('u', top) + lerpV('w', top) / 2 - uL) * k, 0);
+    sx.lineTo((lerpV('u', bot) + lerpV('w', bot) / 2 - uL) * k, sh); sx.lineTo((lerpV('u', bot) - lerpV('w', bot) / 2 - uL) * k, sh); sx.closePath(); };
+  paintBlue(sx, imgs, k, 0, 0, sw, sh, STRIPE.colour, trap);
   const g = sx.createLinearGradient(0, 0, 0, sh);                   // alpha mask: solid, fading out behind the logo, slowly back in
   for (let i = 0; i <= 160; i++) { const f = i / 160; g.addColorStop(f, `rgba(0,0,0,${sa(STRIPE.vTop + (STRIPE.vBottom - STRIPE.vTop) * f).toFixed(4)})`); }
   sx.globalCompositeOperation = 'destination-in'; sx.fillStyle = g; sx.fillRect(0, 0, sw, sh);
   // composite in linear light: a plain sRGB alpha blend of maroon into blue passes through a dark, muddy purple; blending light gives a clean gradient
-  const bx = Math.round(X(STRIPE.u - STRIPE.w / 2)), by = Math.round(Y(STRIPE.vTop)), base = ctx.getImageData(bx, by, sw, sh), top = sx.getImageData(0, 0, sw, sh);
+  const bx = Math.round(X(uL)), by = Math.round(Y(STRIPE.vTop)), base = ctx.getImageData(bx, by, sw, sh), top = sx.getImageData(0, 0, sw, sh);
   const lin = new Float32Array(256).map((_, i) => Math.pow(i / 255, 2.2));
   for (let i = 0; i < base.data.length; i += 4) {
     const al = top.data[i + 3] / 255; if (al === 0) continue;
@@ -277,7 +295,7 @@ function buildShirtTexture(imgs, trim) {
   // raglan piping and mesh side panels, front and back, left and right (mirrored about each panel's centre line)
   const mirror = (c) => (pts) => pts.map(([u, v]) => [2 * c - u, v]);
   const panels = [];
-  for (const r of RAGLAN) {
+  if (J.panels) for (const r of RAGLAN) {
     const line = smooth(r.line), top = line.findIndex(([, v]) => v <= r.apex), end = line.findIndex(([, v]) => v <= r.tip);
     const far = r.seam[0] - 0.04, poly = [[far, r.apex], ...line.slice(top, end + 1), r.seam, [far, r.seam[1]]];   // `far` = well outside the side seam, clipped by the geometry
     for (const m of [(p) => p, mirror(r.centre)]) panels.push({ poly: m(poly), line: m(line), diag: m([line[end], r.seam]) });
@@ -285,7 +303,7 @@ function buildShirtTexture(imgs, trim) {
   for (const p of panels) {
     ctx.save(); path(p.poly); ctx.closePath(); ctx.clip();
     ctx.fillStyle = COLOURS.mesh; ctx.fillRect(0, 0, cv.width, cv.height);
-    ctx.strokeStyle = 'rgba(215,215,222,0.5)'; ctx.lineWidth = 1.0 * sc; ctx.beginPath();
+    ctx.strokeStyle = 'rgba(190,190,200,0.24)'; ctx.lineWidth = 1.0 * sc; ctx.beginPath();
     const step = 4.8 * sc;
     for (let x = 0; x < cv.width; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, cv.height); }
     for (let y = 0; y < cv.height; y += step) { ctx.moveTo(0, y); ctx.lineTo(cv.width, y); }
@@ -293,11 +311,12 @@ function buildShirtTexture(imgs, trim) {
     ctx.strokeStyle = COLOURS.piping; ctx.lineWidth = 14 * sc; path(p.line); ctx.stroke(); path(p.diag); ctx.stroke();
   }
 
-  // sleeve cuffs: a blue band with a thin maroon edge below it (the cuff is a plain rectangle in the sleeve's UV island)
-  for (const sl of trim.sleeves) paintBlue(ctx, imgs, k, X(sl.u0 - 0.01), Y(sl.hem + 0.020), (sl.u1 - sl.u0 + 0.02) * k, 0.012 * k);
+  // sleeve cuffs (Jersey 2 only): two thin stripes above the hem; Jersey 1 cuffs are plain shirt cloth
+  const cf = J.cuffs;
+  if (cf.colour) for (const sl of trim.sleeves) for (let i = 0; i < 2; i++) paintBlue(ctx, imgs, k, X(sl.u0 - 0.01), Y(sl.hem + cf.y0 + cf.h + i * (cf.h + cf.gap)), (sl.u1 - sl.u0 + 0.02) * k, cf.h * k, cf.colour);
 
-  for (const m of CLUB_MARKS) paintSlot(ctx, m, imgs, k, X, Y);
-  for (const sl of SLOTS) if (sl.status === 'taken') paintSlot(ctx, sl, imgs, k, X, Y);
+  for (const m of J.marks) paintSlot(ctx, m, imgs, k, X, Y);
+  for (const sl of slots) if (sl.status === 'taken') paintSlot(ctx, sl, imgs, k, X, Y);
 
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -317,7 +336,8 @@ function buildShirtTexture(imgs, trim) {
     overlay.needsUpdate = true;
   };
   tex.userData.canvas = cv;
-  return { tex, overlay, select };
+  const dispose = () => { tex.dispose(); overlay.dispose(); cv.width = cv.height = ov.width = ov.height = 1; };   // frees the 4096 px canvas before the next kit is painted
+  return { tex, overlay, select, dispose };
 }
 
 function buildShortsTexture(imgs) {
@@ -349,7 +369,7 @@ function addSway(mat, top, bottom, sleeveX, strength, overlay) {
     sh.uniforms.uLag = swayU.uLag;
     sh.uniforms.uSway = { value: new THREE.Vector4(top, bottom, sleeveX, strength) };
     sh.uniforms.uAxis = { value: axis };
-    if (overlay) sh.uniforms.uOver = { value: overlay };
+    if (overlay) sh.uniforms.uOver = overlay;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nuniform float uLag; uniform vec4 uSway; uniform vec2 uAxis; varying float vOutSgn; varying vec3 vRadV; varying float vMid;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -420,8 +440,13 @@ function addHotspot(slot, p, n, i) {
   hotspots.push({ slot, p, n, az: 0, el: b });
 }
 
+// marker position in UV: logo spots (taken) put it just outside the right edge, level with the logo's middle, so it never covers lettering;
+// open spots draw nothing until selected, so theirs stays on the bottom-right corner
+const MARK_GAP = 0.04;
+const markerUV = (s) => (s.mark === 'below' ? [s.uv[0], s.uv[1] - (s.h || s.w * 0.3) / 2 - 0.03] : s.mark === 'above' ? [s.uv[0], s.uv[1] + (s.h || s.w * 0.3) / 2 + 0.02] : s.kind === 'logo' ? [s.uv[0] + s.w / 2 + MARK_GAP, s.uv[1]] : [s.uv[0] + s.w * 0.5, s.uv[1] - (s.h || s.w * 0.3) / 2]);
+
 function openCard(id) {
-  const s = SLOTS.find((x) => x.id === id); if (!s) return;
+  const s = curSlots.find((x) => x.id === id); if (!s) return;
   activeId = id;
   $('c-name').textContent = s.label;
   const st = $('c-status'); st.textContent = statusLabel[s.status]; st.className = 'badge ' + s.status;
@@ -436,9 +461,10 @@ function openCard(id) {
   const hs = hotspots.find((x) => x.slot.id === id);
   if (hs) {                                            // zoom to the selected spot: it turns to face us, so centre it sideways too
     const th = -hs.az;
-    // the marker sits on the slot's bottom-right corner: shift by half the slot to centre the logo itself
-    setView(Math.min(2.4, V.zMax), hs.p.y + ((hs.slot.h || hs.slot.w * 0.3) / 2) * M_PER_UV,
-      hs.p.x * Math.cos(th) + hs.p.z * Math.sin(th) - (hs.slot.w / 2) * M_PER_UV);
+    // shift from the marker back to the middle of the logo
+    const [mu, mv] = markerUV(hs.slot);
+    setView(Math.min(2.4, V.zMax), hs.p.y + (hs.slot.uv[1] - mv) * M_PER_UV,
+      hs.p.x * Math.cos(th) + hs.p.z * Math.sin(th) - (mu - hs.slot.uv[0]) * M_PER_UV);
   }
   hideHint();
 }
@@ -532,6 +558,7 @@ document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', ()
 function hideHint() { $('hint').classList.add('gone'); }
 
 const azimuth = () => -S.rot;
+let shadowMesh = null, floatY = 0;           // idle float: the kit bobs a few mm and the contact shadow breathes with it
 
 function step(dt, now) {
   if (S.tween) {
@@ -554,6 +581,9 @@ function step(dt, now) {
   S.lag += S.lagV * dt;
   swayU.uLag.value = S.lag;
   spin.rotation.y = S.rot;
+  floatY = reduceMotion ? 0 : 0.005 * Math.sin(now / 1000 * (Math.PI * 2 / 6));   // 5 mm, 6 s period
+  spin.position.y = floatY;
+  if (shadowMesh) { shadowMesh.scale.setScalar(1 - floatY * 14); shadowMesh.material.opacity = 1 - floatY * 40; }
   const kv = 1 - Math.exp(-14 * dt);                // ease the view towards its target
   V.z += (V.zT - V.z) * kv; V.y += (V.yT - V.y) * kv; V.x += (V.xT - V.x) * kv;
   if (Math.abs(V.zT - V.z) < 1e-4) V.z = V.zT;
@@ -588,19 +618,18 @@ async function boot() {
   const yTop = 1.6, yHem = bb.min.y;              // shoulder line and hem of the shirt
   const shortsBox = new THREE.Box3().setFromObject(M.shorts);
 
-  const fabric = { roughness: 0.82, metalness: 0, sheen: 0.55, sheenRoughness: 0.7, sheenColor: new THREE.Color(COLOURS.sheen), envMapIntensity: 0.75, side: THREE.DoubleSide };
+  const fabric = { roughness: 0.82, metalness: 0, sheen: 0.45, sheenRoughness: 0.6, sheenColor: new THREE.Color(COLOURS.sheen), envMapIntensity: 0.62, side: THREE.DoubleSide };
   const nrm = knitNormalMap();
-  const shirtPaint = buildShirtTexture(imgs, trim);
-  setPlaceholder = shirtPaint.select;
-  const shirtMat = new THREE.MeshPhysicalMaterial({ ...fabric, map: shirtPaint.tex, normalMap: nrm, normalScale: new THREE.Vector2(0.3, 0.3) });
-  addSway(shirtMat, yTop, yHem, 0.17, 1.0, shirtPaint.overlay);
-  const shortsMat = new THREE.MeshPhysicalMaterial({ ...fabric, roughness: 0.9, sheenColor: new THREE.Color('#5a5a62'), sheen: 0.7, map: buildShortsTexture(imgs), normalMap: nrm, normalScale: new THREE.Vector2(0.3, 0.3) });
+  const overU = { value: null };                    // the placeholder overlay texture, swapped when the jersey changes
+  const shirtMat = new THREE.MeshPhysicalMaterial({ ...fabric, normalMap: nrm, normalScale: new THREE.Vector2(0.16, 0.16) });
+  addSway(shirtMat, yTop, yHem, 0.17, 1.0, overU);
+  const shortsMat = new THREE.MeshPhysicalMaterial({ ...fabric, roughness: 0.9, sheenColor: new THREE.Color('#5a5a62'), sheen: 0.7, map: buildShortsTexture(imgs), normalMap: nrm, normalScale: new THREE.Vector2(0.16, 0.16) });
   addSway(shortsMat, shortsBox.max.y, shortsBox.min.y, 9, 0.85);
   const liningMat = new THREE.MeshPhysicalMaterial({ ...fabric, color: new THREE.Color('#101010'), roughness: 0.95, sheen: 0 });
   addSway(liningMat, shortsBox.max.y, shortsBox.min.y, 9, 0.85);
   const capMat = new THREE.MeshPhysicalMaterial({ ...fabric, color: 0xffffff, vertexColors: true, roughness: 0.95, sheen: 0, side: THREE.FrontSide });
   addSway(capMat, yTop, yHem, 0.17, 1.0);
-  const collarMat = new THREE.MeshPhysicalMaterial({ ...fabric, map: buildCollarTexture(imgs), normalMap: nrm, normalScale: new THREE.Vector2(0.3, 0.3), roughness: 0.85 });   // maroon with a blue band, on its own sheet (the collar UVs overlap the shirt panels)
+  const collarMat = new THREE.MeshPhysicalMaterial({ ...fabric, normalMap: nrm, normalScale: new THREE.Vector2(0.16, 0.16), roughness: 0.85 });   // maroon with a blue band, on its own sheet (the collar UVs overlap the shirt panels)
 
   M.shirt_back.material = M.shirt_front.material = shirtMat;
   M.shorts.material = shortsMat; M.shorts_lining.material = M.waistband.material = liningMat; M.collar.material = collarMat;
@@ -643,20 +672,55 @@ async function boot() {
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(0.85, 0.85), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sc), transparent: true, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.set(0, shortsBox.min.y - 0.1, 0); scene.add(shadow);
 
-  SLOTS.forEach((s, i) => {
-    const front = s.uv[0] < 0.36 || s.id.startsWith('sleeve') ? [M.shirt_front, M.shirt_back] : [M.shirt_back, M.shirt_front];
-    const ch = (s.h || s.w * 0.3) / 2;
-    // marker sits at the slot's bottom-right corner so it never hides the logo itself
-    const hit = uvToSurface(front, s.uv[0] + s.w * 0.5, s.uv[1] - ch) || uvToSurface(front, s.uv[0], s.uv[1]);
-    if (hit) addHotspot(s, hit.p.addScaledVector(hit.n, 0.008), hit.n, i); else console.warn('no surface at slot', s.id);
-    // which way to turn the kit to face this spot: the front/back panels face 0 / pi exactly; sleeves use the surface at the slot centre
-    const h = hotspots[hotspots.length - 1], c = uvToSurface(front, s.uv[0], s.uv[1]);
-    h.az = s.id.startsWith('sleeve') ? (c ? Math.atan2(c.n.x, c.n.z) : Math.atan2(h.n.x, h.n.z)) : (s.uv[0] < 0.36 ? 0 : Math.PI);
-  });
+  shadowMesh = shadow;
+  let shirtPaint = null;
+  // paint one jersey: free the previous kit texture first (phones never hold two), repaint, swap the maps, rebuild the hotspots
+  function paintJersey(J) {
+    if (shirtPaint) shirtPaint.dispose();
+    shirtPaint = buildShirtTexture(imgs, trim, J);
+    shirtMat.map = shirtPaint.tex; overU.value = shirtPaint.overlay; shirtMat.needsUpdate = true;
+    const ct = buildCollarTexture(imgs, J); if (collarMat.map) collarMat.map.dispose(); collarMat.map = ct; shirtMat.userData.collar = null; collarMat.needsUpdate = true;
+    setPlaceholder = shirtPaint.select;
+    curSlots = slotsFor(J);
+    hotspots.length = 0; $('hotspots').textContent = '';
+    curSlots.forEach((s, i) => {
+      const front = s.uv[0] < 0.36 || s.id.startsWith('sleeve') ? [M.shirt_front, M.shirt_back] : [M.shirt_back, M.shirt_front];
+      // marker position: see markerUV
+      const hit = uvToSurface(front, ...markerUV(s)) || uvToSurface(front, s.uv[0], s.uv[1]);
+      if (hit) addHotspot(s, hit.p.addScaledVector(hit.n, 0.008), hit.n, i); else console.warn('no surface at slot', s.id);
+      // which way to turn the kit to face this spot: the front/back panels face 0 / pi exactly; sleeves use the surface at the slot centre
+      const h = hotspots[hotspots.length - 1], c = uvToSurface(front, s.uv[0], s.uv[1]);
+      if (c && !s.id.startsWith('sleeve')) h.n = new THREE.Vector3(c.p.x * 0.4, 0, c.p.z).normalize();   // body logos: visible while the front/back of the torso faces the camera (the marker may sit off the logo's edge, over a bend or the shoulder, where the surface normal turns away early)
+      h.az = s.id.startsWith('sleeve') ? (c ? Math.atan2(c.n.x, c.n.z) : Math.atan2(h.n.x, h.n.z)) : (s.uv[0] < 0.36 ? 0 : Math.PI);
+    });
+    if (window.__kit) window.__kit.shirtTex = shirtMat.map;
+  }
+  const jerseyFromHash = () => (/jersey-?2/i.test(location.hash) ? 2 : 1);
+  let jersey = jerseyFromHash(), switching = false;
+  const syncButtons = () => document.querySelectorAll('.jbtn').forEach((b) => { const on = +b.dataset.jersey === jersey; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
+  async function switchJersey(id) {
+    if (switching || id === jersey) return;
+    switching = true; jersey = id; syncButtons();
+    history.replaceState(null, '', id === 2 ? '#jersey-2' : location.pathname + location.search);
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const dom = renderer.domElement, hs = $('hotspots');
+    if (!reduceMotion) { dom.style.transition = hs.style.transition = 'opacity .2s ease'; dom.style.opacity = hs.style.opacity = 0; await wait(220); }
+    const keep = activeId;
+    paintJersey(JERSEYS[id]);
+    if (keep) openCard(keep); else setPlaceholder(null);
+    if (!reduceMotion) {                             // a quick turn as the new kit fades in (horizontal only)
+      S.tween = { from: S.rot, d: Math.PI * 2, t0: performance.now(), dur: 1100, last: S.rot }; S.omega = 0; S.idleSince = performance.now();
+      dom.style.opacity = hs.style.opacity = 1;
+    }
+    switching = false;
+  }
+  document.querySelectorAll('.jbtn').forEach((b) => b.addEventListener('click', () => switchJersey(+b.dataset.jersey)));
+  addEventListener('hashchange', () => switchJersey(jerseyFromHash()));
+  paintJersey(JERSEYS[jersey]); syncButtons();
 
   resize();
   $('loading').classList.add('gone');
-  window.__kit = { S, V, azimuth, hotspots, swayU, camera, shirtTex: shirtMat.map, HI_RES };      // used by the Playwright checks
+  window.__kit = { M, S, V, azimuth, hotspots, swayU, camera, shirtTex: shirtMat.map, HI_RES, switchJersey, get jersey() { return jersey; }, get float() { return floatY; } };      // used by the Playwright checks
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
     const dt = Math.min(0.033, Math.max(0.001, (now - last) / 1000)); last = now;

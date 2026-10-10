@@ -3,7 +3,7 @@
 Sponsor-pitch website: a 3D MEDCMU FC kit that sponsors spin, zoom and tap to see each placement and its price.
 Live: https://namoshai.github.io/medcmu-fc/ · repo `NamoShai/medcmu-fc` (public, GitHub Pages from `main`) · architecture → `MAP.md`.
 
-## Current state (2026-10-10, Draft 6 local, not pushed)
+## Current state (2026-10-11, Draft 7 local, not pushed)
 - LIVE. Home kit only. Slots, tiers and prices from `CMU_Medicine_Football_Sponsor_Proposal_2569.pdf`: Gold THB 20,000 · Silver THB 10,000 · Bronze THB 5,000 per spot.
 - Partners: **Sriphat Hospital CMU**, Gold, front centre (large white logo) · **Inseethong Gold (ห้างทองอินทรีทอง)**, Gold, front chest (wearer's right). Back spot under the number is open (Silver).
 - Stats on the page: 846,624 IG views/30 days · 3× Syringe Games champions · 35th Syringe Games 15–17 Jan 2570. Squad size and matches per season are still placeholders.
@@ -22,6 +22,8 @@ Live: https://namoshai.github.io/medcmu-fc/ · repo `NamoShai/medcmu-fc` (public
 
 - **2026-10-10 · Draft 6b.** Fixes after Cloudy's review: stripe from the collar, fabric-textured blue shared with collar/cuffs, eagle level with the crest, darker mesh, neck-opening interior regression fixed. Re-verified at 1280x800 and 390x844, zero errors.
 - **2026-10-10 · Draft 6c.** Sleeve-cuff artifacts removed (dark plug inside each cuff), footer 'Draft 2' text removed. Re-verified, zero errors. Before/after: `screenshots/v6_cuff_*`.
+
+- **2026-10-11 · Draft 7 (local, not pushed; awaiting Cloudy's review).** Two kits on the one mesh, switched by "Jersey 1" / "Jersey 2" buttons (`#jersey-2` hash). Jersey 1 = Draft 6 minus the cuff band and minus all mesh/piping (clean damask sides); collar and navy centre stripe untouched. Jersey 2 = Namo's concept render: black raglan mesh sides with white piping, wide black stripe from the collar (flares towards the hem, lightens behind Sriphat), thin navy/purple collar band and two cuff stripes, Sriphat replaces the MEDCMU wordmark, crest centre chest, Inseethong on the wearer's right chest; layout on golden-ratio relationships (table in `MAP.md`). Fluid look: raking key light + fill, softer knit normal, 5 mm idle float with a breathing contact shadow (off under reduced motion), fade + full-turn on switch. One shirt canvas in memory at a time. Screenshots `screenshots/v7_*`.
 
 ## Open / next
 - Push the pending wording commit (`git push`), then confirm it's live.

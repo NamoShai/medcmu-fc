@@ -18,7 +18,7 @@ export const COLOURS = {
   blue: '#0a3482',                                     // royal/navy blue: collar band, cuff bands and the centre stripe
   shorts: '#151515',
   tone: 'rgb(192, 138, 148)',                          // "multiply"-blended over the damask to match the base maroon
-  mesh: '#0c0c10',                                     // side-panel mesh base (near black, as in the design)
+  mesh: '#060608',                                     // side-panel mesh base (near black, as in the design)
   sheen: '#a8505c',                                    // lighter maroon, for the fabric sheen
 };
 
@@ -93,10 +93,10 @@ export const STRIPE = { u: 0.1705, w: 0.06, vTop: 0.835, vBottom: 0.478, solidAb
 // Catmull-Rom spline at paint time). The mesh is the wedge between the armhole and `line` from `apex` (v) down to `tip` (v), closed by
 // a diagonal edge to `seam` = [u, v] on the side seam. The back panel is cut lower, so its numbers follow the 3D height of the seam.
 export const RAGLAN = [
-  { centre: 0.170, apex: 0.800, tip: 0.600, seam: [0.0215, 0.614],
+  { centre: 0.170, apex: 0.800, tip: 0.600, seam: [0.0215, 0.535],
     line: [[0.108, 0.880], [0.094, 0.872], [0.078, 0.860], [0.065, 0.843], [0.058, 0.823], [0.0555, 0.800], [0.0575, 0.775], [0.0630, 0.750], [0.0695, 0.720],
       [0.0735, 0.690], [0.0755, 0.660], [0.0755, 0.630], [0.0745, 0.600], [0.0725, 0.570], [0.0705, 0.540], [0.0685, 0.510], [0.0665, 0.481]] },
-  { centre: 0.563, apex: 0.790, tip: 0.578, seam: [0.4239, 0.590],
+  { centre: 0.563, apex: 0.790, tip: 0.578, seam: [0.4239, 0.525],
     line: [[0.4985, 0.866], [0.484, 0.858], [0.4685, 0.846], [0.457, 0.830], [0.4495, 0.812], [0.4455, 0.790], [0.4478, 0.766], [0.4525, 0.742],
       [0.4653, 0.693], [0.4720, 0.663], [0.4769, 0.633], [0.4769, 0.604], [0.4758, 0.578], [0.4725, 0.551], [0.4694, 0.526], [0.4669, 0.500], [0.4645, 0.476]] },
 ];
@@ -139,4 +139,34 @@ export const MODEL_CREDIT = {
   authorUrl: 'https://sketchfab.com/proxy000000000',
   licence: 'CC-BY-4.0',
   licenceUrl: 'http://creativecommons.org/licenses/by/4.0/',
+};
+
+// ---------- two kits on the one mesh ----------
+// Jersey 1: the Draft-6 shirt, clean sides (no mesh, no piping) and plain cuffs. Jersey 2: the concept render (black stripe, black mesh sides,
+// white raglan piping, two thin stripes on the cuffs, crest centre chest above Sriphat). Everything not listed here is shared.
+const PHI = 1.6180339887;
+export const GOLD = { PHI, sriphatW: 0.13 };                                 // Sriphat spans the middle 45% of the front panel (as in the concept), well inside both piping curves
+const sw = GOLD.sriphatW, chestW = sw / PHI ** 2, crestW = chestW;           // Sriphat : chest logo = phi^2; the crest would be phi^3 (5 cm, unreadable), so it is held equal to the chest logo
+const vCollar = 0.835, vSriphat = vCollar - (vCollar - 0.481) / (1 + PHI);    // collar-to-logo : logo-to-hem = 1 : phi
+const vCrest = vCollar - (vCollar - vSriphat) / PHI ** 2;                     // collar-to-crest : crest-to-Sriphat = 1 : phi
+const frontW = 0.30;                                                          // front panel width in UV (u 0.02-0.32)
+export const GOLD_VALUES = { sriphatW: sw, chestW, crestW, vSriphat, vCrest, stripeTopW: 0.058, stripeBottomW: 0.095 };   // stripe widths override phi^4 / phi^3 (0.044 / 0.071): the concept's band is wider
+
+export const JERSEYS = {
+  1: { id: 1, label: 'Jersey 1', panels: false, cuffs: [], stripe: STRIPE, collar: { ...COLLAR }, marks: CLUB_MARKS, slots: { 'front-centre': { mark: 'below' }, 'front-chest': { mark: 'above' } } },     // Sriphat is wide: its right edge curves round the side, so the marker goes below it
+  2: { id: 2, label: 'Jersey 2', panels: true,
+    cuffs: { colour: '#2c2a6b', h: 0.006, gap: 0.006 * PHI, y0: 0.010 },       // two thin navy/purple stripes, gap : stripe = phi
+    stripe: { colour: '#08080a', uA: 0.226, wA: GOLD_VALUES.stripeTopW, vA: vCollar, uB: 0.19, wB: GOLD_VALUES.stripeBottomW, vB: 0.481,
+      vTop: 0.90, vBottom: 0.478, solidAbove: 0.752, clear0: 0.728, clear1: 0.672, solidBelow: 0.648, alpha: 1, min: 0.12 },   // wide black stripe, flares by phi, lightens behind Sriphat
+    collar: { ...COLLAR, band: [0.40, 0.54], bandColour: '#2c2a6b', stripe: null },
+    marks: [
+      { kind: 'logo', logo: 'crest', uv: [0.1705, vCrest], w: crestW },
+      { kind: 'name', text: 'PLAYER', number: '9', uv: [0.56, 0.72], w: 0.19 },
+    ],
+    slots: {
+      'front-centre': { uv: [0.1705, vSriphat], w: sw, h: sw / 3.413 },
+      'front-chest': { uv: [0.101, vCrest], w: chestW, h: chestW / 1.1824, mark: 'above' },
+      'sleeve-left': { uv: [0.165, 0.262], w: 0.085, h: 0.055 },
+      'sleeve-right': { uv: [0.485, 0.262], w: 0.085, h: 0.055 },
+    } },
 };

@@ -1,6 +1,6 @@
 # MEDCMU FC Locker Room — MAP
 
-Static sponsor-pitch site. A 3D MEDCMU FC home kit (shirt + shorts) spins horizontally with drag/flick inertia; tappable markers show each sponsor slot. No backend, no build step. **Draft 3.**
+Static sponsor-pitch site. A 3D MEDCMU FC home kit (shirt + shorts) spins horizontally with drag/flick inertia; tappable markers show each sponsor slot. No backend, no build step. **Draft 7: two kits (Jersey 1 / Jersey 2).**
 
 ## Deploy / update
 Live: https://namoshai.github.io/medcmu-fc/ (repo `NamoShai/medcmu-fc`, public, GitHub Pages from `main` / root). To update: edit, test locally, then
@@ -80,3 +80,24 @@ In a scratch folder: `npm i @gltf-transform/core @gltf-transform/functions @gltf
 - Draft 6e: cuff lining = full cuff ellipse, dark maroon vertex-colour gradient (darker deeper in); mesh grid 2.5x finer (step 4.8, line 1.0).
 - Draft 6f: cuff plug rim is fitted to the tilted hem plane (it poked out below the cuffs in the front view before); official Inseethong logo rebuilt: eagle keyed from assets/src/inseethong_official.jpg, text Sarabun 500 white.
 - Draft 6g: front-view dark bars under the cuffs were the lining plug (rim at k 1.02, 4 mm below the hem); proven by a plug-off toggle (clean), now k 0.97 and 3 mm above the hem.
+
+## Draft 7: two jerseys (2026-10-11)
+- One mesh, two paint jobs. `JERSEYS` (end of `kit.js`) holds each kit's design: `panels` (mesh + piping on/off), `cuffs`, `stripe`, `collar`, `marks` (club marks) and `slots` (per-jersey UV overrides of `SLOTS`; ids, tiers, prices are shared and untouched). `app.js` `paintJersey(J)` disposes the old shirt/overlay/collar textures, repaints from `JERSEYS[id]`, swaps `shirtMat.map` / `collarMat.map` / the overlay uniform, and rebuilds the hotspots from `slotsFor(J)`. Only one 4096 (desktop) / 2048 (phone) shirt canvas exists at a time.
+- Switching (`switchJersey`): fade out 0.2 s, repaint, fade in with one full horizontal turn (1.1 s). Rotation and zoom are kept; an open card is reopened on the new kit's hotspot. `prefers-reduced-motion`: instant swap. URL hash `#jersey-2` selects Jersey 2 on load and follows the buttons.
+- **Jersey 1** = the Draft 6 kit with: no cuff band, no mesh panels, no piping (clean damask sides front to back). Collar (with blue band + stripe across its front) and the navy centre stripe are untouched. Dropping ALL piping (not just the side outlines) was the reading of "clean sides"; the front still reads fine without the curves.
+- **Jersey 2** = the concept render: maroon collar with a thin navy/purple band, two thin navy/purple cuff stripes, white raglan piping + near-black mesh side panels (the existing `RAGLAN` spline data), a wide crisp black stripe from the collar on the wearer's left shoulder (`JERSEYS[2].stripe`, a diagonal trapezoid that flares towards the hem and lightens to 12 % alpha behind Sriphat only), the white Sriphat logo (replaces the MEDCMU wordmark), the crest centre chest above it, Inseethong on the wearer's right chest.
+- Float + light: `spin.position.y` bobs 5 mm on a 6 s sine (off under reduced motion) and the contact shadow scales/fades with it. Key light is low and raking from the viewer's right, plus a soft fill, sheen 0.45, knit normalScale 0.16 (was 0.3) so the mesh folds read instead of the fabric hatching.
+- Verification hook additions: `window.__kit.jersey`, `.switchJersey(n)`, `.float`.
+
+## Golden-ratio layout (Jersey 2 front; all numbers computed in `kit.js`, `GOLD_VALUES`)
+phi = 1.618. UV units (front panel is 0.30 wide, about 1.71 m per UV unit). Sriphat is 0.13 wide (the middle ~45% of the front, as in the concept) so it clears both piping curves with margin.
+| Relationship | Rule | Value |
+|---|---|---|
+| Sriphat : chest logo (Inseethong) | phi^2 | chest logo 0.0497 wide |
+| Sriphat : crest | **broken**: phi^3 would give a 5 cm crest, unreadable | crest = chest logo = 0.0497 |
+| collar-to-Sriphat-centre : Sriphat-centre-to-hem | 1 : phi (collar v 0.835, hem v 0.481) | Sriphat centre v 0.700 |
+| collar-to-crest : crest-to-Sriphat | 1 : phi^2 split of the collar-to-Sriphat gap | crest centre v 0.783 |
+| front panel : stripe at collar / at hem | **overridden**: phi^4 / phi^3 (0.044 / 0.071) read as a shadow, the concept band is wider | 0.058 / 0.095 |
+| cuff stripe : gap between the two stripes | 1 : phi | 0.006 : 0.0097 |
+Not golden, by choice: the chest logo's horizontal position (u 0.101), the stripe's slant (centre u 0.226 at the collar to 0.190 at the hem, kept inside the shoulder piping) and the stripe fade (full strength above v 0.752 and below v 0.648, 12 % behind Sriphat; the ramps are short (0.024) so the band edges stay crisp). Jersey 1 was NOT re-laid out on phi (its placements stay where they were, Namo's call in Draft 6).
+Hotspot markers (`markerUV` in app.js): taken logo spots put the marker just outside the right edge of the logo (`MARK_GAP` 0.04), level with its middle; a slot with `mark: 'above'` (Inseethong on both jerseys: on Jersey 1 a right-hand marker would float mid-stripe, on Jersey 2 it would hit the crest) puts it above (Jersey 1 Sriphat uses `mark: 'below'`, its right edge curves out of sight; gap 0.02: higher and the marker rolls over the shoulder and hides). Open spots keep the marker on the bottom-right corner.
