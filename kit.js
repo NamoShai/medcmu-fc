@@ -26,8 +26,12 @@ export const DAMASK = { src: 'assets/damask_tile.jpg', tileCm: 22 };   // physic
 
 export const ASSETS = {
   crest: 'assets/crest.png',
+  crestNavy: 'assets/crest_navy.png',                   // Jersey 2: the design's navy/teal + cream-gold crest (recoloured from crest.png)
   sriphat: 'assets/sriphat.png',
   inseethong: 'assets/inseethong.png',
+  inseethongJ2: 'assets/inseethong_j2.png',             // Jersey 2: eagle scaled to the reference's proportion to the Thai line
+  asura: 'assets/asura.png',                            // gold mask + wordmark, black background removed
+  sleevePack: 'assets/sleeve_right_pack.png',           // AED4ALL over Progresso, wordmarks in white
 };
 
 export const TIER_COLOURS = { gold: '#e6b422', silver: '#b9bcc1', bronze: '#b56a4c' };
@@ -58,11 +62,12 @@ export const SLOTS = [
   { id: 'front-chest', label: 'Front chest (wearer’s right)', status: 'taken', sponsor: 'Inseethong Gold (ห้างทองอินทรีทอง)', tier: 'gold', price: 20000,
     kind: 'logo', logo: 'inseethong', uv: [0.104, 0.773], w: 0.048, h: 0.056,
     size: 'Not stated in the proposal', visibility: 'Front of the shirt, seen head-on' },
-  { id: 'sleeve-left', label: 'Left sleeve', status: 'open', sponsor: null, tier: 'silver', price: 10000,
-    kind: 'open', uv: [0.165, 0.248], w: 0.085, h: 0.06,
+  // Sleeves: the wearer's LEFT sleeve is the pattern piece on the viewer's right in the front view (u 0.37-0.60), the wearer's RIGHT sleeve the one on the viewer's left (u 0.05-0.28).
+  { id: 'sleeve-left', label: 'Left sleeve', status: 'taken', sponsor: 'ASURA', tier: null, price: null,          // no price given for ASURA: none is shown
+    kind: 'logo', logo: 'asura', uv: [0.485, 0.262], w: 0.066, h: 0.066,
     size: 'Not stated in the proposal', visibility: 'Sleeve, seen from the side' },
-  { id: 'sleeve-right', label: 'Right sleeve', status: 'open', sponsor: null, tier: 'silver', price: 10000,
-    kind: 'open', uv: [0.485, 0.248], w: 0.085, h: 0.06,
+  { id: 'sleeve-right', label: 'Right sleeve', status: 'taken', sponsor: 'AED4ALL + Progresso', tier: 'bronze', price: 5000,   // the two share one spot: THB 5,000 together
+    kind: 'logo', logo: 'sleevePack', uv: [0.165, 0.262], w: 0.066, h: 0.066,
     size: 'Not stated in the proposal', visibility: 'Sleeve, seen from the side' },
   { id: 'back-below-number', label: 'Back, under the player number', status: 'open', sponsor: null, tier: 'silver', price: 10000,
     kind: 'open', uv: [0.56, 0.575], w: 0.15, h: 0.06,
@@ -82,6 +87,7 @@ export const SLOTS = [
 export const CLUB_MARKS = [
   { kind: 'logo', logo: 'crest', uv: [0.236, 0.768], w: 0.046 },
   { kind: 'name', text: 'PLAYER', number: '9', uv: [0.56, 0.72], w: 0.19 },
+  { kind: 'text', text: 'Medicine Football Club', uv: [0.56, 0.617], w: 0.115 },
 ];
 
 // Centre stripe, collar to hem on the FRONT only (as in the PSG reference: about 1/5 of the front width). Solid under the collar, fades to
@@ -91,14 +97,14 @@ export const STRIPE = { u: 0.1705, w: 0.06, vTop: 0.835, vBottom: 0.478, solidAb
 // Raglan piping + mesh side panels, one entry per body panel (left side listed, the right side is mirrored about `centre`).
 // `line` runs from the neckline, round the shoulder, down the inner edge of the mesh panel and on to the hem (smoothed with a
 // Catmull-Rom spline at paint time). The mesh is the wedge between the armhole and `line` from `apex` (v) down to `tip` (v), closed by
-// a diagonal edge to `seam` = [u, v] on the side seam. The back panel is cut lower, so its numbers follow the 3D height of the seam.
+// a smooth taper (quadratic curve) to `seam` = [u, v] on the side seam, so the panel ends in a point near the hem. The back panel is cut lower, so its numbers follow the 3D height of the seam.
 export const RAGLAN = [
-  { centre: 0.170, apex: 0.800, tip: 0.600, seam: [0.0215, 0.535],
-    line: [[0.108, 0.880], [0.094, 0.872], [0.078, 0.860], [0.065, 0.843], [0.058, 0.823], [0.0555, 0.800], [0.0575, 0.775], [0.0630, 0.750], [0.0695, 0.720],
-      [0.0735, 0.690], [0.0755, 0.660], [0.0755, 0.630], [0.0745, 0.600], [0.0725, 0.570], [0.0705, 0.540], [0.0685, 0.510], [0.0665, 0.481]] },
-  { centre: 0.563, apex: 0.790, tip: 0.578, seam: [0.4239, 0.525],
+  { centre: 0.170, apex: 0.800, tip: 0.520, seam: [0.0215, 0.565],
+    line: [[0.108, 0.880], [0.094, 0.872], [0.078, 0.860], [0.065, 0.843], [0.058, 0.823], [0.0555, 0.800], [0.0575, 0.775], [0.0680, 0.750], [0.0790, 0.720],
+      [0.0850, 0.690], [0.0885, 0.660], [0.0910, 0.630], [0.0935, 0.600], [0.0955, 0.570], [0.0975, 0.540], [0.0990, 0.510], [0.1000, 0.481]] },
+  { centre: 0.563, apex: 0.790, tip: 0.505, seam: [0.4239, 0.555],
     line: [[0.4985, 0.866], [0.484, 0.858], [0.4685, 0.846], [0.457, 0.830], [0.4495, 0.812], [0.4455, 0.790], [0.4478, 0.766], [0.4525, 0.742],
-      [0.4653, 0.693], [0.4720, 0.663], [0.4769, 0.633], [0.4769, 0.604], [0.4758, 0.578], [0.4725, 0.551], [0.4694, 0.526], [0.4669, 0.500], [0.4645, 0.476]] },
+      [0.4610, 0.710], [0.4700, 0.680], [0.4780, 0.650], [0.4840, 0.620], [0.4890, 0.590], [0.4930, 0.560], [0.4965, 0.530], [0.4990, 0.500], [0.5010, 0.476]] },
 ];
 
 // The collar mesh is two UV strips (front neckline, back neckline) that run along u. They overlap the shirt panels in UV, so the collar has its
@@ -115,6 +121,8 @@ export const SHORTS_DECALS = [
 export const PARTNERS = [
   { name: 'Sriphat Hospital CMU', slot: 'Front centre', logo: 'assets/sriphat.png' },
   { name: 'Inseethong Gold (ห้างทองอินทรีทอง)', slot: 'Front chest', logo: 'assets/inseethong.png' },
+  { name: 'ASURA', slot: 'Left sleeve', logo: 'assets/asura.png' },
+  { name: 'AED4ALL + Progresso', slot: 'Right sleeve', logo: 'assets/sleeve_right_pack.png' },
 ];
 
 // Real figures from the proposal. Anything the proposal does not state stays a placeholder.
@@ -142,31 +150,34 @@ export const MODEL_CREDIT = {
 };
 
 // ---------- two kits on the one mesh ----------
-// Jersey 1: the Draft-6 shirt, clean sides (no mesh, no piping) and plain cuffs. Jersey 2: the concept render (black stripe, black mesh sides,
-// white raglan piping, two thin stripes on the cuffs, crest centre chest above Sriphat). Everything not listed here is shared.
+// Jersey 1: the Draft-6 shirt, clean sides (no mesh, no piping) and plain cuffs. Jersey 2 (Draft 8): the committee's final front design (IMG_8513): vertical black
+// pinstripes from the collar, royal-blue collar band and cuff band, white raglan piping + black mesh side panels with a tonal gradient. Everything not listed here is shared.
 const PHI = 1.6180339887;
-export const GOLD = { PHI, sriphatW: 0.13 };                                 // Sriphat spans the middle 45% of the front panel (as in the concept), well inside both piping curves
-const sw = GOLD.sriphatW, chestW = sw / PHI ** 2, crestW = chestW;           // Sriphat : chest logo = phi^2; the crest would be phi^3 (5 cm, unreadable), so it is held equal to the chest logo
-const vCollar = 0.835, vSriphat = vCollar - (vCollar - 0.481) / (1 + PHI);    // collar-to-logo : logo-to-hem = 1 : phi
-const vCrest = vCollar - (vCollar - vSriphat) / PHI ** 2;                     // collar-to-crest : crest-to-Sriphat = 1 : phi
-const frontW = 0.30;                                                          // front panel width in UV (u 0.02-0.32)
-export const GOLD_VALUES = { sriphatW: sw, chestW, crestW, vSriphat, vCrest, stripeTopW: 0.058, stripeBottomW: 0.095 };   // stripe widths override phi^4 / phi^3 (0.044 / 0.071): the concept's band is wider
+export const GOLD = { PHI, sriphatW: 0.143 };                                // Sriphat spans ~0.82 of the gap between the two piping lines (reference: 418 of 515 px)
+const sw = GOLD.sriphatW, chestW = sw / PHI ** 2;                            // Sriphat : chest logo = phi^2 (kept)
+const crestW = 0.042;                                                        // held inside the stripe (reference crest is ~0.8 of the stripe width); phi^3 would be 5 cm, unreadable
+const vCollar = 0.835, vSriphat = 0.72;                                      // reference: Sriphat centre is 0.316 of the way collar-to-hem (phi would give 0.382 = v 0.700); the reference wins
+const vCrest = vCollar - (vCollar - vSriphat) / PHI ** 2;                    // collar-to-crest : crest-to-Sriphat = 1 : phi^2 (kept; v 0.791, reference 0.788)
+export const GOLD_VALUES = { sriphatW: sw, chestW, crestW, vSriphat, vCrest, stripeW: 0.05 };
+const J2_BLUE = '#0a449b';                                                   // the reference's royal blue (collar band, cuff band)
 
 export const JERSEYS = {
   1: { id: 1, label: 'Jersey 1', panels: false, cuffs: [], stripe: STRIPE, collar: { ...COLLAR }, marks: CLUB_MARKS, slots: { 'front-centre': { mark: 'below' }, 'front-chest': { mark: 'above' } } },     // Sriphat is wide: its right edge curves round the side, so the marker goes below it
   2: { id: 2, label: 'Jersey 2', panels: true,
-    cuffs: { colour: '#2c2a6b', h: 0.006, gap: 0.006 * PHI, y0: 0.010 },       // two thin navy/purple stripes, gap : stripe = phi
-    stripe: { colour: '#08080a', uA: 0.226, wA: GOLD_VALUES.stripeTopW, vA: vCollar, uB: 0.19, wB: GOLD_VALUES.stripeBottomW, vB: 0.481,
-      vTop: 0.90, vBottom: 0.478, solidAbove: 0.752, clear0: 0.728, clear1: 0.672, solidBelow: 0.648, alpha: 1, min: 0.12 },   // wide black stripe, flares by phi, lightens behind Sriphat
-    collar: { ...COLLAR, band: [0.40, 0.54], bandColour: '#2c2a6b', stripe: null },
+    pipe: 10.5,                                                  // reference piping is thinner than Draft 7's
+    mesh: { top: '#0a0a0d', bottom: '#220c11', grid: [0.72, 0.34], step: 11, line: 1.5 },   // black at the underarm easing to a black-maroon at the hem; the grid fades a little with it
+    cuffs: { colour: J2_BLUE, n: 1, h: 0.0085, y0: 0.0075 },                  // one royal-blue band with maroon above and below
+    sleeveMesh: { w: 0.062 },                                    // mesh on the underside of the sleeve above the cuff, with white piping on its inner edge
+    stripe: { colour: '#050203', wash: 'rgba(14,0,3,0.74)', pins: { n: 9, fill: 0.80 }, uA: 0.2255, wA: GOLD_VALUES.stripeW, vA: vCollar, uB: 0.2255, wB: GOLD_VALUES.stripeW, vB: 0.481,
+      vTop: 0.862, vBottom: 0.478, solidAbove: 0.760, clear0: 0.688, clear1: 0.45, solidBelow: 0.40, alpha: 1 },   // vertical pinstripes: solid at the collar, faint behind "HAT", gone by the foot of "HOSPITAL CMU"
+    collar: { ...COLLAR, band: [0.42, 0.66], bandColour: J2_BLUE, rim: { range: [0.70, 0.92], colour: 'rgba(40,0,8,0.55)' }, stripe: null },   // outer maroon rim, blue band, thin darker inner rim
     marks: [
-      { kind: 'logo', logo: 'crest', uv: [0.1705, vCrest], w: crestW },
+      { kind: 'logo', logo: 'crestNavy', uv: [0.2255, vCrest], w: crestW, m: [1.0504, -0.3059, -0.0638, 1.152, 0, 0] },
       { kind: 'name', text: 'PLAYER', number: '9', uv: [0.56, 0.72], w: 0.19 },
+      { kind: 'text', text: 'Medicine Football Club', uv: [0.56, 0.617], w: 0.115 },
     ],
     slots: {
       'front-centre': { uv: [0.1705, vSriphat], w: sw, h: sw / 3.413 },
-      'front-chest': { uv: [0.101, vCrest], w: chestW, h: chestW / 1.1824, mark: 'above' },
-      'sleeve-left': { uv: [0.165, 0.262], w: 0.085, h: 0.055 },
-      'sleeve-right': { uv: [0.485, 0.262], w: 0.085, h: 0.055 },
+      'front-chest': { uv: [0.124, 0.774], logo: 'inseethongJ2', w: 0.048, h: 0.048 / 1.2747, m: [1.0135, 0.2385, 0.0499, 1.079, 0, 0], mark: 'above' },
     } },
 };

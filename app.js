@@ -25,8 +25,8 @@ function buildPage(onPick) {
     <button class="row" data-id="${s.id}">
       <span class="lab">${s.label}</span>
       <span class="who">${s.sponsor || 'Available'}</span>
-      <span class="tier"><i class="tdot" style="background:${TIER_COLOURS[s.tier]}"></i>${tierName(s.tier)}</span>
-      <span class="pr">${thb(s.price)}</span>
+      <span class="tier">${s.tier ? `<i class="tdot" style="background:${TIER_COLOURS[s.tier]}"></i>${tierName(s.tier)}` : '—'}</span>
+      <span class="pr">${s.price == null ? '—' : thb(s.price)}</span>
     </button>`).join('');
   $('slot-table').addEventListener('click', (e) => {
     const b = e.target.closest('.row'); if (!b) return;
@@ -105,8 +105,7 @@ function zoomBy(f, py = 0.5, px = 0.5) {
 function applyView() {
   camera.zoom = V.z; camera.position.set(V.x, V.y, V.dist); camera.lookAt(V.x, V.y, 0); camera.updateProjectionMatrix();
 }
-function resize() {
-  const w = host.clientWidth, h = host.clientHeight;
+function resize(w = host.clientWidth, h = host.clientHeight) {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   const t = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
@@ -117,7 +116,7 @@ function resize() {
   V.zMax = THREE.MathUtils.clamp((texPxPerM / screenPxPerM) * 1.15, 1.8, 5.5);
   clampView(); applyView();
 }
-addEventListener('resize', resize);
+addEventListener('resize', () => resize());      // (resize takes optional w, h for __kit.shot: never pass it the event)
 
 // ---------- procedural fabric normal map (knit / mesh dimples) ----------
 function knitNormalMap() {
@@ -167,10 +166,14 @@ function paintSlot(ctx, s, imgs, k, X, Y) {
   const w = s.w * k, h = (s.h || s.w * 0.3) * k;
   ctx.save();
   ctx.translate(X(s.uv[0]), Y(s.uv[1]));
+  if (s.m) ctx.transform(...s.m);   // affine pre-correction (a, b, c, d, e, f): the shoulder yoke's UV is turned ~12 deg and sheared on the 3D model; this is the inverse of the mesh's UV->screen map there, so the logo stands upright (see MAP.md Draft 8)
   if (s.kind === 'logo') {
     const im = imgs[s.logo], r = im.width / im.height;
     let dw = w, dh = w / r; if (s.h && dh > h) { dh = h; dw = h * r; }
     ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh);
+  } else if (s.kind === 'text') {
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    fitText(ctx, s.text, w, 'Inter, sans-serif', 600); ctx.fillText(s.text, 0, 0);
   } else if (s.kind === 'name') {
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const sz = fitText(ctx, s.text, w, 'Cinzel, serif'); ctx.fillText(s.text, 0, -w * 0.46);
@@ -241,6 +244,10 @@ function buildCollarTexture(imgs, J) {
   const ctx = cv.getContext('2d');
   paintDamask(ctx, imgs, k, cv.width, cv.height);
   for (const [v0, v1] of COLLAR.strips) paintBlue(ctx, imgs, k, 0, (W.v1 - (v1 - (v1 - v0) * COLLAR.band[0])) * k, cv.width, (v1 - v0) * (COLLAR.band[1] - COLLAR.band[0]) * k, COLLAR.bandColour);
+  if (COLLAR.rim) for (const [v0, v1] of COLLAR.strips) {   // Jersey 2: thin darker maroon rim next to the blue band
+    ctx.fillStyle = COLLAR.rim.colour;
+    ctx.fillRect(0, (W.v1 - (v1 - (v1 - v0) * COLLAR.rim.range[0])) * k, cv.width, (v1 - v0) * (COLLAR.rim.range[1] - COLLAR.rim.range[0]) * k);
+  }
   if (COLLAR.stripe) {                                      // Jersey 1: the centre stripe runs on across the front of the collar
     const [s0, s1] = COLLAR.strips[COLLAR.stripe.strip];
     paintBlue(ctx, imgs, k, (COLLAR.stripe.u0 - W.u0) * k, (W.v1 - s1) * k, (COLLAR.stripe.u1 - COLLAR.stripe.u0) * k, (s1 - s0) * k);
@@ -279,7 +286,11 @@ function buildShirtTexture(imgs, trim, J) {
     const top = STRIPE.vTop, bot = STRIPE.vBottom;
     sx.moveTo((lerpV('u', top) - lerpV('w', top) / 2 - uL) * k, 0); sx.lineTo((lerpV('u', top) + lerpV('w', top) / 2 - uL) * k, 0);
     sx.lineTo((lerpV('u', bot) + lerpV('w', bot) / 2 - uL) * k, sh); sx.lineTo((lerpV('u', bot) - lerpV('w', bot) / 2 - uL) * k, sh); sx.closePath(); };
-  paintBlue(sx, imgs, k, 0, 0, sw, sh, STRIPE.colour, trap);
+  if (STRIPE.pins) {                                                // Jersey 2: a dark wash with n thin black pinstripes, maroon showing between them
+    sx.fillStyle = STRIPE.wash; sx.fillRect(0, 0, sw, sh);
+    const per = sw / STRIPE.pins.n, pw = per * STRIPE.pins.fill;
+    for (let i = 0; i < STRIPE.pins.n; i++) paintBlue(sx, imgs, k, i * per + (per - pw) / 2, 0, pw, sh, STRIPE.colour);
+  } else paintBlue(sx, imgs, k, 0, 0, sw, sh, STRIPE.colour, trap);
   const g = sx.createLinearGradient(0, 0, 0, sh);                   // alpha mask: solid, fading out behind the logo, slowly back in
   for (let i = 0; i <= 160; i++) { const f = i / 160; g.addColorStop(f, `rgba(0,0,0,${sa(STRIPE.vTop + (STRIPE.vBottom - STRIPE.vTop) * f).toFixed(4)})`); }
   sx.globalCompositeOperation = 'destination-in'; sx.fillStyle = g; sx.fillRect(0, 0, sw, sh);
@@ -297,23 +308,45 @@ function buildShirtTexture(imgs, trim, J) {
   const panels = [];
   if (J.panels) for (const r of RAGLAN) {
     const line = smooth(r.line), top = line.findIndex(([, v]) => v <= r.apex), end = line.findIndex(([, v]) => v <= r.tip);
-    const far = r.seam[0] - 0.04, poly = [[far, r.apex], ...line.slice(top, end + 1), r.seam, [far, r.seam[1]]];   // `far` = well outside the side seam, clipped by the geometry
-    for (const m of [(p) => p, mirror(r.centre)]) panels.push({ poly: m(poly), line: m(line), diag: m([line[end], r.seam]) });
+    // taper: quadratic curve from the end of the inner line back out to the side seam; the control point is level with the seam end, so the curve leaves the line vertically and meets the seam horizontally: front and back tapers join into one smooth curve round the side
+    const E = line[end], S = r.seam, C = [E[0] - 0.006, S[1]], taper = [];
+    for (let t = 1; t <= 12; t++) { const q = t / 12; taper.push([0, 1].map((d) => (1 - q) ** 2 * E[d] + 2 * (1 - q) * q * C[d] + q * q * S[d])); }
+    const far = r.seam[0] - 0.04, poly = [[far, r.apex], ...line.slice(top, end + 1), ...taper, [far, r.seam[1]]];   // `far` = well outside the side seam, clipped by the geometry
+    for (const m of [(p) => p, mirror(r.centre)]) panels.push({ poly: m(poly), line: m(line), diag: m([E, ...taper]), y0: Y(r.apex), y1: Y(r.seam[1]) });
   }
-  for (const p of panels) {
-    ctx.save(); path(p.poly); ctx.closePath(); ctx.clip();
-    ctx.fillStyle = COLOURS.mesh; ctx.fillRect(0, 0, cv.width, cv.height);
-    ctx.strokeStyle = 'rgba(190,190,200,0.24)'; ctx.lineWidth = 1.0 * sc; ctx.beginPath();
-    const step = 4.8 * sc;
+  const MS = J.mesh;                                         // Jersey 2: tonal gradient (black -> black-maroon) with a grid that fades a little with it
+  const paintMesh = (y0, y1) => {
+    const step = (MS ? MS.step : 4.8) * sc;
+    let fill = COLOURS.mesh, grid = 'rgba(190,190,200,0.24)';
+    if (MS) {
+      fill = ctx.createLinearGradient(0, y0, 0, y1); fill.addColorStop(0, MS.top); fill.addColorStop(1, MS.bottom);
+      grid = ctx.createLinearGradient(0, y0, 0, y1); grid.addColorStop(0, `rgba(235,235,240,${MS.grid[0]})`); grid.addColorStop(1, `rgba(235,235,240,${MS.grid[1]})`);
+    }
+    ctx.fillStyle = fill; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.strokeStyle = grid; ctx.lineWidth = (MS ? MS.line : 1.0) * sc; ctx.beginPath();
     for (let x = 0; x < cv.width; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, cv.height); }
     for (let y = 0; y < cv.height; y += step) { ctx.moveTo(0, y); ctx.lineTo(cv.width, y); }
-    ctx.stroke(); ctx.restore();
-    ctx.strokeStyle = COLOURS.piping; ctx.lineWidth = 14 * sc; path(p.line); ctx.stroke(); path(p.diag); ctx.stroke();
+    ctx.stroke();
+  };
+  for (const p of panels) {
+    ctx.save(); path(p.poly); ctx.closePath(); ctx.clip();
+    paintMesh(p.y0, p.y1);
+    ctx.restore();
+    ctx.strokeStyle = COLOURS.piping; ctx.lineWidth = (J.pipe || 14) * sc; path(p.line); ctx.stroke(); path(p.diag); ctx.stroke();
+  }
+
+  // mesh under the sleeve (Jersey 2): a wedge above each cuff on the underarm edges of the sleeve pieces, narrow at the armpit and widening to the cuff
+  // (plain dark mesh, no piping: the stroke read as stray white marks at the armpit)
+  if (J.sleeveMesh) for (const sl of trim.sleeves) for (const e of [sl.u0, sl.u1]) {
+    const sg = e === sl.u0 ? 1 : -1, wd = J.sleeveMesh.w, vLo = sl.hem + J.cuffs.y0 + J.cuffs.h + 0.005, vHi = 0.296;
+    const line = smooth([[e + sg * 0.010, vHi], [e + sg * 0.020, (vHi + vLo) / 2], [e + sg * wd, vLo]]);
+    ctx.save(); path([[e - sg * 0.03, vHi], ...line, [e - sg * 0.03, vLo]]); ctx.closePath(); ctx.clip();
+    paintMesh(Y(vHi), Y(vLo)); ctx.restore();
   }
 
   // sleeve cuffs (Jersey 2 only): two thin stripes above the hem; Jersey 1 cuffs are plain shirt cloth
   const cf = J.cuffs;
-  if (cf.colour) for (const sl of trim.sleeves) for (let i = 0; i < 2; i++) paintBlue(ctx, imgs, k, X(sl.u0 - 0.01), Y(sl.hem + cf.y0 + cf.h + i * (cf.h + cf.gap)), (sl.u1 - sl.u0 + 0.02) * k, cf.h * k, cf.colour);
+  if (cf.colour) for (const sl of trim.sleeves) for (let i = 0; i < (cf.n || 2); i++) paintBlue(ctx, imgs, k, X(sl.u0 - 0.01), Y(sl.hem + cf.y0 + cf.h + i * (cf.h + (cf.gap || 0))), (sl.u1 - sl.u0 + 0.02) * k, cf.h * k, cf.colour);
 
   for (const m of J.marks) paintSlot(ctx, m, imgs, k, X, Y);
   for (const sl of slots) if (sl.status === 'taken') paintSlot(ctx, sl, imgs, k, X, Y);
@@ -451,10 +484,11 @@ function openCard(id) {
   $('c-name').textContent = s.label;
   const st = $('c-status'); st.textContent = statusLabel[s.status]; st.className = 'badge ' + s.status;
   $('c-sponsor').textContent = s.sponsor || 'Available';
-  $('c-pack').textContent = tierName(s.tier) + ' package';
+  $('c-pack').textContent = s.tier ? tierName(s.tier) + ' package' : 'Not stated';
   $('c-size').textContent = s.size;
   $('c-vis').textContent = s.visibility;
   $('c-price').textContent = priceText(s);
+  $('c-price').hidden = $('c-price').previousElementSibling.hidden = s.price == null;      // a taken spot with no price given shows none
   $('card').hidden = false;
   hotspots.forEach((h) => h.el.classList.toggle('on', h.slot.id === id));
   setPlaceholder(s);
@@ -719,8 +753,13 @@ async function boot() {
   paintJersey(JERSEYS[jersey]); syncButtons();
 
   resize();
+  // verification hook: render the current view at w x h pixels (pixel ratio 1) and return it as a PNG data URL, whatever the window or zoom is
+  function shot(w, h) {
+    const pr = renderer.getPixelRatio(); renderer.setPixelRatio(1); resize(w, h); step(0.0001, performance.now()); frame();
+    const url = renderer.domElement.toDataURL('image/png'); renderer.setPixelRatio(pr); resize(); return url;
+  }
   $('loading').classList.add('gone');
-  window.__kit = { M, S, V, azimuth, hotspots, swayU, camera, shirtTex: shirtMat.map, HI_RES, switchJersey, get jersey() { return jersey; }, get float() { return floatY; } };      // used by the Playwright checks
+  window.__kit = { M, S, V, azimuth, hotspots, swayU, camera, shirtTex: shirtMat.map, HI_RES, switchJersey, shot, get jersey() { return jersey; }, get float() { return floatY; } };      // used by the Playwright checks
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
     const dt = Math.min(0.033, Math.max(0.001, (now - last) / 1000)); last = now;
