@@ -4,7 +4,7 @@ import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import {
   PX_PER_UV_HI, PX_PER_UV_LO, SHIRT_WINDOW, M_PER_UV, COLOURS, DAMASK, ASSETS, TIER_COLOURS, TIERS,
-  SLOTS, RAGLAN, JERSEYS, SHORTS_DECALS, PARTNERS, STATS, STAT_PLACEHOLDERS, CONTACT, MODEL_CREDIT,
+  SLOTS, RAGLAN, JERSEYS, BODY, SHORTS_DECALS, PARTNERS, STATS, STAT_PLACEHOLDERS, CONTACT, MODEL_CREDIT,
 } from './kit.js';
 
 const $ = (id) => document.getElementById(id);
@@ -18,7 +18,7 @@ const loadImg = (src) => new Promise((res, rej) => {
 
 // ---------- page content that comes from kit.js ----------
 const statusLabel = { taken: 'Partner', open: 'Available' };
-const priceText = (s) => (s.price == null ? '' : thb(s.price) + ' per spot');
+const priceText = (s) => (s.price == null ? '' : thb(s.price) + ' ' + (s.priceNote || 'per spot'));
 
 function buildPage(onPick) {
   $('slot-table').innerHTML = SLOTS.map((s, i) => `
@@ -309,39 +309,31 @@ function buildShirtTexture(imgs, trim, J) {
   if (J.panels) for (const r of RAGLAN) {
     const line = smooth(r.line), top = line.findIndex(([, v]) => v <= r.apex), end = line.findIndex(([, v]) => v <= r.tip);
     // taper: quadratic curve from the end of the inner line back out to the side seam; the control point is level with the seam end, so the curve leaves the line vertically and meets the seam horizontally: front and back tapers join into one smooth curve round the side
-    const E = line[end], S = r.seam, C = [E[0] - 0.006, S[1]], taper = [];
+    const E = line[end], S = r.seam, C = [(E[0] + S[0]) / 2, (E[1] + S[1]) / 2], taper = [];   // straight diagonal: the black ends in a point on the side seam (front and back diagonals meet there)
+    
     for (let t = 1; t <= 12; t++) { const q = t / 12; taper.push([0, 1].map((d) => (1 - q) ** 2 * E[d] + 2 * (1 - q) * q * C[d] + q * q * S[d])); }
-    const far = r.seam[0] - 0.04, poly = [[far, r.apex], ...line.slice(top, end + 1), ...taper, [far, r.seam[1]]];   // `far` = well outside the side seam, clipped by the geometry
-    for (const m of [(p) => p, mirror(r.centre)]) panels.push({ poly: m(poly), line: m(line), diag: m([E, ...taper]), y0: Y(r.apex), y1: Y(r.seam[1]) });
+    const far = r.seam[0] - 0.04, head = []; for (let t = 0; t <= 10; t++) { const q = t / 10, A = [r.seam[0], r.apex - 0.10], H = line[top], Cc = [H[0], A[1] + 0.02]; head.push([0, 1].map((d) => (1 - q) ** 2 * A[d] + 2 * (1 - q) * q * Cc[d] + q * q * H[d])); }   // pointed top: curve from the side seam into the line
+    const poly = [[far, r.apex - 0.10], ...head, ...line.slice(top + 1, end + 1), ...taper, [far, r.seam[1]]];   // `far` = well outside the side seam, clipped by the geometry
+    for (const m of [(p) => p, mirror(r.centre)]) panels.push({ poly: m(poly), line: m(line), diag: m([E, ...taper]), head: m(head), y0: Y(r.apex), y1: Y(r.seam[1]) });
   }
-  const MS = J.mesh;                                         // Jersey 2: tonal gradient (black -> black-maroon) with a grid that fades a little with it
+  const MS = J.mesh;                                         // Jersey 2: solid black with a very subtle tone shift; no `grid` = no pattern. Jersey 3: `noFill`, the panel area stays damask
   const paintMesh = (y0, y1) => {
     const step = (MS ? MS.step : 4.8) * sc;
     let fill = COLOURS.mesh, grid = 'rgba(190,190,200,0.24)';
     if (MS) {
       fill = ctx.createLinearGradient(0, y0, 0, y1); fill.addColorStop(0, MS.top); fill.addColorStop(1, MS.bottom);
-      grid = ctx.createLinearGradient(0, y0, 0, y1); grid.addColorStop(0, `rgba(235,235,240,${MS.grid[0]})`); grid.addColorStop(1, `rgba(235,235,240,${MS.grid[1]})`);
+      if (MS.grid) { grid = ctx.createLinearGradient(0, y0, 0, y1); grid.addColorStop(0, `rgba(235,235,240,${MS.grid[0]})`); grid.addColorStop(1, `rgba(235,235,240,${MS.grid[1]})`); }
     }
     ctx.fillStyle = fill; ctx.fillRect(0, 0, cv.width, cv.height);
+    if (MS && !MS.grid) return;
     ctx.strokeStyle = grid; ctx.lineWidth = (MS ? MS.line : 1.0) * sc; ctx.beginPath();
     for (let x = 0; x < cv.width; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, cv.height); }
     for (let y = 0; y < cv.height; y += step) { ctx.moveTo(0, y); ctx.lineTo(cv.width, y); }
     ctx.stroke();
   };
   for (const p of panels) {
-    ctx.save(); path(p.poly); ctx.closePath(); ctx.clip();
-    paintMesh(p.y0, p.y1);
-    ctx.restore();
-    ctx.strokeStyle = COLOURS.piping; ctx.lineWidth = (J.pipe || 14) * sc; path(p.line); ctx.stroke(); path(p.diag); ctx.stroke();
-  }
-
-  // mesh under the sleeve (Jersey 2): a wedge above each cuff on the underarm edges of the sleeve pieces, narrow at the armpit and widening to the cuff
-  // (plain dark mesh, no piping: the stroke read as stray white marks at the armpit)
-  if (J.sleeveMesh) for (const sl of trim.sleeves) for (const e of [sl.u0, sl.u1]) {
-    const sg = e === sl.u0 ? 1 : -1, wd = J.sleeveMesh.w, vLo = sl.hem + J.cuffs.y0 + J.cuffs.h + 0.005, vHi = 0.296;
-    const line = smooth([[e + sg * 0.010, vHi], [e + sg * 0.020, (vHi + vLo) / 2], [e + sg * wd, vLo]]);
-    ctx.save(); path([[e - sg * 0.03, vHi], ...line, [e - sg * 0.03, vLo]]); ctx.closePath(); ctx.clip();
-    paintMesh(Y(vHi), Y(vLo)); ctx.restore();
+    if (!J.noFill) { ctx.save(); path(p.poly); ctx.closePath(); ctx.clip(); paintMesh(p.y0, p.y1); ctx.restore(); }
+    ctx.strokeStyle = COLOURS.piping; ctx.lineWidth = (J.pipe || 14) * sc; path(p.line); ctx.stroke(); path(p.diag); ctx.stroke(); path(p.head); ctx.stroke();
   }
 
   // sleeve cuffs (Jersey 2 only): two thin stripes above the hem; Jersey 1 cuffs are plain shirt cloth
@@ -430,6 +422,45 @@ function addSway(mat, top, bottom, sleeveX, strength, overlay) {
 }
 const axis = new THREE.Vector2();
 
+// ---------- athletic torso: smooth vertex deformation of the shirt (UVs untouched) ----------
+// Radial push from the body axis, front-weighted: chest (two pec lobes) forward, abdomen sunk, slight waist taper (see BODY in kit.js).
+function torsoField(P, x, y, z, out) {
+  const dx = x - axis.x, dz = z - axis.y, r = Math.hypot(dx, dz);
+  if (r < 1e-4) { out[0] = x; out[1] = y; out[2] = z; return; }
+  const ex = dx / r, ez = dz / r, ax = Math.abs(dx), wf = Math.max(0, ez) ** 2, g = (c, s) => Math.exp(-0.5 * ((y - c) / s) ** 2);
+  const plate = smoothstep(P.chestLo, P.chestHi, y) * (1 - smoothstep(P.chestTop, P.chestEnd, y)) * (1 - smoothstep(P.chestW0, P.chestW1, ax));   // broad flat chest plate
+  const fl = smoothstep(P.floorY, P.floorY + P.floorW, y);                                       // no change at the hem (the waistband sits right under it)
+  const dr = fl * (wf * (P.chest * plate + P.belly * (1 - smoothstep(0.14, 0.19, ax)) * g(P.bellyY, P.bellyS))
+           + ex * ex * P.waist * (1 - smoothstep(0.19, 0.24, ax)) * g(P.waistY, P.waistS));
+  out[0] = x + dr * ex; out[1] = y; out[2] = z + dr * ez;
+}
+// Re-shape a mesh from its saved original (P = null restores it). Positions move by the field; the stored normals (whose in/out orientation the
+// lining shader relies on) are carried through the field's Jacobian (cofactor matrix), so they stay consistent and keep their sign.
+function reshapeTorso(mesh, P) {
+  const g = mesh.geometry, pos = g.attributes.position, nor = g.attributes.normal;
+  if (!g.userData.p0) {                              // the normals are an interleaved, normalised Int8 attribute: read and write them through the attribute API
+    g.userData.p0 = pos.array.slice(); g.userData.n0 = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) { g.userData.n0[3 * i] = nor.getX(i); g.userData.n0[3 * i + 1] = nor.getY(i); g.userData.n0[3 * i + 2] = nor.getZ(i); }
+  }
+  const p0 = g.userData.p0, n0 = g.userData.n0, h = 1e-3, a = [0, 0, 0], b = [0, 0, 0], c = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let i = 0; i < pos.count; i++) {
+    const x = p0[3 * i], y = p0[3 * i + 1], z = p0[3 * i + 2];
+    if (!P) { pos.array.set(p0.subarray(3 * i, 3 * i + 3), 3 * i); nor.setXYZ(i, n0[3 * i], n0[3 * i + 1], n0[3 * i + 2]); continue; }
+    torsoField(P, x, y, z, a); pos.array[3 * i] = a[0]; pos.array[3 * i + 1] = a[1]; pos.array[3 * i + 2] = a[2];
+    for (let k = 0; k < 3; k++) {                    // column k of the Jacobian = d(field)/d(x, y, z)[k]
+      const q = [x, y, z], r = [x, y, z]; q[k] += h; r[k] -= h;
+      torsoField(P, q[0], q[1], q[2], a); torsoField(P, r[0], r[1], r[2], b);
+      for (let m = 0; m < 3; m++) c[m][k] = (a[m] - b[m]) / (2 * h);
+    }
+    const [[j00, j01, j02], [j10, j11, j12], [j20, j21, j22]] = c, nx = n0[3 * i], ny = n0[3 * i + 1], nz = n0[3 * i + 2];
+    const cx = (j11 * j22 - j12 * j21) * nx - (j10 * j22 - j12 * j20) * ny + (j10 * j21 - j11 * j20) * nz;   // cofactor(J) . n  (= det * J^-T n)
+    const cy = -(j01 * j22 - j02 * j21) * nx + (j00 * j22 - j02 * j20) * ny - (j00 * j21 - j01 * j20) * nz;
+    const cz = (j01 * j12 - j02 * j11) * nx - (j00 * j12 - j02 * j10) * ny + (j00 * j11 - j01 * j10) * nz;
+    const l = Math.hypot(cx, cy, cz) || 1; nor.setXYZ(i, cx / l, cy / l, cz / l);
+  }
+  pos.needsUpdate = true; (nor.data || nor).needsUpdate = true; g.computeBoundingBox(); g.computeBoundingSphere();
+}
+
 // ---------- model ----------
 const spin = new THREE.Group(), kit = new THREE.Group();
 spin.add(kit); scene.add(spin);
@@ -476,7 +507,7 @@ function addHotspot(slot, p, n, i) {
 // marker position in UV: logo spots (taken) put it just outside the right edge, level with the logo's middle, so it never covers lettering;
 // open spots draw nothing until selected, so theirs stays on the bottom-right corner
 const MARK_GAP = 0.04;
-const markerUV = (s) => (s.mark === 'below' ? [s.uv[0], s.uv[1] - (s.h || s.w * 0.3) / 2 - 0.03] : s.mark === 'above' ? [s.uv[0], s.uv[1] + (s.h || s.w * 0.3) / 2 + 0.02] : s.kind === 'logo' ? [s.uv[0] + s.w / 2 + MARK_GAP, s.uv[1]] : [s.uv[0] + s.w * 0.5, s.uv[1] - (s.h || s.w * 0.3) / 2]);
+const markerUV = (s) => (s.markAt ? s.markAt : s.mark === 'below' ? [s.uv[0], s.uv[1] - (s.h || s.w * 0.3) / 2 - 0.03] : s.mark === 'above' ? [s.uv[0], s.uv[1] + (s.h || s.w * 0.3) / 2 + 0.02] : s.kind === 'logo' ? [s.uv[0] + s.w / 2 + MARK_GAP, s.uv[1]] : [s.uv[0] + s.w * 0.5, s.uv[1] - (s.h || s.w * 0.3) / 2]);
 
 function openCard(id) {
   const s = curSlots.find((x) => x.id === id); if (!s) return;
@@ -648,6 +679,8 @@ async function boot() {
   // rotate about the body's vertical axis
   const bb = new THREE.Box3().setFromObject(M.shirt_back).union(new THREE.Box3().setFromObject(M.shirt_front));
   axis.set(0, (bb.min.z + bb.max.z) / 2);
+  const body = (P) => { reshapeTorso(M.shirt_front, P); reshapeTorso(M.shirt_back, P); };
+  body(BODY);                                      // Draft 9 athletic torso; __kit.body(null) restores the original shirt, __kit.body({...BODY, ...}) tunes it
   kit.position.set(-axis.x, 0, -axis.y);
   const yTop = 1.6, yHem = bb.min.y;              // shoulder line and hem of the shirt
   const shortsBox = new THREE.Box3().setFromObject(M.shorts);
@@ -729,13 +762,13 @@ async function boot() {
     });
     if (window.__kit) window.__kit.shirtTex = shirtMat.map;
   }
-  const jerseyFromHash = () => (/jersey-?2/i.test(location.hash) ? 2 : 1);
+  const jerseyFromHash = () => { const m = /jersey-?([23])/i.exec(location.hash); return m ? +m[1] : 1; };
   let jersey = jerseyFromHash(), switching = false;
   const syncButtons = () => document.querySelectorAll('.jbtn').forEach((b) => { const on = +b.dataset.jersey === jersey; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); });
   async function switchJersey(id) {
     if (switching || id === jersey) return;
     switching = true; jersey = id; syncButtons();
-    history.replaceState(null, '', id === 2 ? '#jersey-2' : location.pathname + location.search);
+    history.replaceState(null, '', id > 1 ? '#jersey-' + id : location.pathname + location.search);
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const dom = renderer.domElement, hs = $('hotspots');
     if (!reduceMotion) { dom.style.transition = hs.style.transition = 'opacity .2s ease'; dom.style.opacity = hs.style.opacity = 0; await wait(220); }
@@ -759,7 +792,7 @@ async function boot() {
     const url = renderer.domElement.toDataURL('image/png'); renderer.setPixelRatio(pr); resize(); return url;
   }
   $('loading').classList.add('gone');
-  window.__kit = { M, S, V, azimuth, hotspots, swayU, camera, shirtTex: shirtMat.map, HI_RES, switchJersey, shot, get jersey() { return jersey; }, get float() { return floatY; } };      // used by the Playwright checks
+  window.__kit = { M, S, V, azimuth, hotspots, swayU, camera, shirtTex: shirtMat.map, HI_RES, switchJersey, shot, body: (P) => { body(P); paintJersey(JERSEYS[jersey]); }, get jersey() { return jersey; }, get float() { return floatY; } };      // used by the Playwright checks
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
     const dt = Math.min(0.033, Math.max(0.001, (now - last) / 1000)); last = now;

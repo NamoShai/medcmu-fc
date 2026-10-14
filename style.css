@@ -98,7 +98,7 @@ h1 { margin: 0; font-weight: 600; font-size: clamp(28px, 5vw, 44px); line-height
 
 .partners { display: grid; gap: 14px; margin-top: 20px; }
 .partner { display: flex; align-items: center; gap: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 28px 24px; }
-.partner img { height: 52px; width: auto; max-width: 55%; object-fit: contain; background: #6b1020; padding: 10px 14px; border-radius: 8px; box-sizing: content-box; }   /* logos are white on the kit: show them on maroon */
+.partner img { height: 84px; width: auto; max-width: 60%; object-fit: contain; background: #6b1020; padding: 10px 14px; border-radius: 8px; box-sizing: content-box; }   /* logos are white on the kit: show them on maroon */
 .partner span { color: var(--muted); font-size: 14px; margin-left: auto; text-align: right; }
 @media (min-width: 700px) { .partners { grid-template-columns: 1fr 1fr; } }
 

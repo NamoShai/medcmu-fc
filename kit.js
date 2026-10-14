@@ -63,11 +63,11 @@ export const SLOTS = [
     kind: 'logo', logo: 'inseethong', uv: [0.104, 0.773], w: 0.048, h: 0.056,
     size: 'Not stated in the proposal', visibility: 'Front of the shirt, seen head-on' },
   // Sleeves: the wearer's LEFT sleeve is the pattern piece on the viewer's right in the front view (u 0.37-0.60), the wearer's RIGHT sleeve the one on the viewer's left (u 0.05-0.28).
-  { id: 'sleeve-left', label: 'Left sleeve', status: 'taken', sponsor: 'ASURA', tier: null, price: null,          // no price given for ASURA: none is shown
-    kind: 'logo', logo: 'asura', uv: [0.485, 0.262], w: 0.048, h: 0.052,   // small and neat: about 60% of the first size, a touch under the right-sleeve pack's height
+  { id: 'sleeve-left', label: 'Left sleeve', status: 'taken', sponsor: 'ASURA', tier: 'bronze', price: 5000,
+    kind: 'logo', logo: 'asura', uv: [0.485, 0.262], w: 0.036, h: 0.040, markAt: [0.519, 0.262],   // about the size of one of the right-sleeve logos (AED4ALL is 0.047 x 0.032)
     size: 'Not stated in the proposal', visibility: 'Sleeve, seen from the side' },
-  { id: 'sleeve-right', label: 'Right sleeve', status: 'taken', sponsor: 'AED4ALL + Progresso', tier: 'bronze', price: 5000,   // the two share one spot: THB 5,000 together
-    kind: 'logo', logo: 'sleevePack', uv: [0.165, 0.262], w: 0.066, h: 0.066,
+  { id: 'sleeve-right', label: 'Right sleeve', status: 'taken', sponsor: 'AED4ALL · Progresso', tier: 'bronze', price: 5000, priceNote: 'for the shared spot (two separate sponsors)',   // two unrelated sponsors sharing one spot
+    kind: 'logo', logo: 'sleevePack', uv: [0.165, 0.262], w: 0.058, h: 0.066, markAt: [0.205, 0.262],      // AED4ALL on top, Progresso below at ~0.78 of its height (never bigger)
     size: 'Not stated in the proposal', visibility: 'Sleeve, seen from the side' },
   { id: 'back-below-number', label: 'Back, under the player number', status: 'open', sponsor: null, tier: 'silver', price: 10000,
     kind: 'open', uv: [0.56, 0.575], w: 0.15, h: 0.06,
@@ -99,12 +99,12 @@ export const STRIPE = { u: 0.1705, w: 0.06, vTop: 0.835, vBottom: 0.478, solidAb
 // Catmull-Rom spline at paint time). The mesh is the wedge between the armhole and `line` from `apex` (v) down to `tip` (v), closed by
 // a smooth taper (quadratic curve) to `seam` = [u, v] on the side seam, so the panel ends in a point near the hem. The back panel is cut lower, so its numbers follow the 3D height of the seam.
 export const RAGLAN = [
-  { centre: 0.170, apex: 0.800, tip: 0.520, seam: [0.0215, 0.565],
-    line: [[0.108, 0.880], [0.094, 0.872], [0.078, 0.860], [0.065, 0.843], [0.058, 0.823], [0.0555, 0.800], [0.0575, 0.775], [0.0680, 0.750], [0.0790, 0.720],
-      [0.0850, 0.690], [0.0885, 0.660], [0.0910, 0.630], [0.0935, 0.600], [0.0955, 0.570], [0.0975, 0.540], [0.0990, 0.510], [0.1000, 0.481]] },
-  { centre: 0.563, apex: 0.790, tip: 0.505, seam: [0.4239, 0.555],
+  { centre: 0.170, apex: 0.800, tip: 0.620, seam: [0.0215, 0.500],
+    line: [[0.108, 0.880], [0.094, 0.872], [0.078, 0.860], [0.065, 0.843], [0.058, 0.823], [0.0555, 0.800], [0.0575, 0.775], [0.0600, 0.750], [0.0625, 0.720],
+      [0.0645, 0.690], [0.0660, 0.660], [0.0675, 0.630], [0.0690, 0.600], [0.0705, 0.570], [0.0715, 0.540], [0.0725, 0.510], [0.0735, 0.481]] },
+  { centre: 0.563, apex: 0.790, tip: 0.600, seam: [0.4239, 0.485],
     line: [[0.4985, 0.866], [0.484, 0.858], [0.4685, 0.846], [0.457, 0.830], [0.4495, 0.812], [0.4455, 0.790], [0.4478, 0.766], [0.4525, 0.742],
-      [0.4610, 0.710], [0.4700, 0.680], [0.4780, 0.650], [0.4840, 0.620], [0.4890, 0.590], [0.4930, 0.560], [0.4965, 0.530], [0.4990, 0.500], [0.5010, 0.476]] },
+      [0.4555, 0.710], [0.4575, 0.680], [0.4590, 0.650], [0.4605, 0.620], [0.4620, 0.590], [0.4635, 0.560], [0.4645, 0.530], [0.4655, 0.500], [0.4665, 0.476]] },
 ];
 
 // The collar mesh is two UV strips (front neckline, back neckline) that run along u. They overlap the shirt panels in UV, so the collar has its
@@ -122,7 +122,8 @@ export const PARTNERS = [
   { name: 'Sriphat Hospital CMU', slot: 'Front centre', logo: 'assets/sriphat.png' },
   { name: 'Inseethong Gold (ห้างทองอินทรีทอง)', slot: 'Front chest', logo: 'assets/inseethong.png' },
   { name: 'ASURA', slot: 'Left sleeve', logo: 'assets/asura.png' },
-  { name: 'AED4ALL + Progresso', slot: 'Right sleeve', logo: 'assets/sleeve_right_pack.png' },
+  { name: 'AED4ALL', slot: 'Right sleeve (shared spot)', logo: 'assets/aed4all.png' },
+  { name: 'Progresso', slot: 'Right sleeve (shared spot)', logo: 'assets/progresso.png' },
 ];
 
 // Real figures from the proposal. Anything the proposal does not state stays a placeholder.
@@ -161,13 +162,20 @@ const vCrest = vCollar - (vCollar - vSriphat) / PHI ** 2;                    // 
 export const GOLD_VALUES = { sriphatW: sw, chestW, crestW, vSriphat, vCrest, stripeW: 0.05 };
 const J2_BLUE = '#0a449b';                                                   // the reference's royal blue (collar band, cuff band)
 
+// Athletic torso (Draft 9): the PSG shirt has a belly (its front sits furthest forward at the hem). A smooth runtime deformation pushes the chest
+// forward (one broad flat plate, no lobes) and sinks the abdomen, with a slight waist taper. Metres, y up, applied radially from the body axis, weighted to the
+// front (cos^2) so the back barely moves. Set `chest: 0, belly: 0, waist: 0` to revert.
+export const BODY = { chest: 0.015, chestLo: 1.30, chestHi: 1.46, chestTop: 1.53, chestEnd: 1.61,      // one broad flat chest plate: ramps in gently from chestLo to chestHi, flat to chestTop, fades out under the collar
+  chestW0: 0.14, chestW1: 0.19,                                                                          // full width of the torso, fading out only at the sleeves
+  belly: -0.008, bellyY: 1.24, bellyS: 0.09, waist: -0.008, waistY: 1.25, waistS: 0.08,
+  floorY: 1.10, floorW: 0.16 };      // below floorY (+floorW) nothing moves: the hem has to stay outside the shorts' waistband (top at y 1.146)      // below floorY (+floorW) nothing moves: the hem has to stay outside the shorts' waistband (top at y 1.146)
+
 export const JERSEYS = {
   1: { id: 1, label: 'Jersey 1', panels: false, cuffs: [], stripe: STRIPE, collar: { ...COLLAR }, marks: CLUB_MARKS, slots: { 'front-centre': { mark: 'below' }, 'front-chest': { mark: 'above' } } },     // Sriphat is wide: its right edge curves round the side, so the marker goes below it
   2: { id: 2, label: 'Jersey 2', panels: true,
     pipe: 10.5,                                                  // reference piping is thinner than Draft 7's
-    mesh: { top: '#0a0a0d', bottom: '#220c11', grid: [0.72, 0.34], step: 11, line: 1.5 },   // black at the underarm easing to a black-maroon at the hem; the grid fades a little with it
+    mesh: { top: '#050506', bottom: '#0d0809' },   // Draft 9: solid black, only a very subtle tone shift (no grid: Namo)
     cuffs: { colour: J2_BLUE, n: 1, h: 0.0085, y0: 0.0075 },                  // one royal-blue band with maroon above and below
-    sleeveMesh: { w: 0.062 },                                    // mesh on the underside of the sleeve above the cuff, with white piping on its inner edge
     stripe: { colour: '#050203', wash: 'rgba(14,0,3,0.74)', pins: { n: 9, fill: 0.80 }, uA: 0.2255, wA: GOLD_VALUES.stripeW, vA: vCollar, uB: 0.2255, wB: GOLD_VALUES.stripeW, vB: 0.481,
       vTop: 0.862, vBottom: 0.478, solidAbove: 0.760, clear0: 0.688, clear1: 0.45, solidBelow: 0.40, alpha: 1 },   // vertical pinstripes: solid at the collar, faint behind "HAT", gone by the foot of "HOSPITAL CMU"
     collar: { ...COLLAR, band: [0.42, 0.66], bandColour: J2_BLUE, rim: { range: [0.70, 0.92], colour: 'rgba(40,0,8,0.55)' }, stripe: null },   // outer maroon rim, blue band, thin darker inner rim
@@ -181,3 +189,6 @@ export const JERSEYS = {
       'front-chest': { uv: [0.124, 0.774], logo: 'inseethongJ2', w: 0.048, h: 0.048 / 1.2747, m: [1.0135, 0.2385, 0.0499, 1.079, 0, 0], mark: 'above' },
     } },
 };
+
+// Jersey 3 (Draft 9): Jersey 2 with the side panels left as plain damask, only the white piping lines kept so the shape still reads.
+JERSEYS[3] = { ...JERSEYS[2], id: 3, label: 'Jersey 3', noFill: true };      // (Draft 9: the black wedge under the sleeves is gone on both: with solid black it showed as spikes at the armpit)
