@@ -21,9 +21,9 @@ const statusLabel = { taken: 'Partner', open: 'Available' };
 const priceText = (s) => (s.price == null ? '' : thb(s.price) + ' per spot');
 
 function buildPage(onPick) {
-  $('slot-table').innerHTML = SLOTS.map((s) => `
+  $('slot-table').innerHTML = SLOTS.map((s, i) => `
     <button class="row" data-id="${s.id}">
-      <span class="lab">${s.label}</span>
+      <span class="lab"><i class="num">${i + 1}</i>${s.label}</span>
       <span class="who">${s.sponsor || 'Available'}</span>
       <span class="tier">${s.tier ? `<i class="tdot" style="background:${TIER_COLOURS[s.tier]}"></i>${tierName(s.tier)}` : '—'}</span>
       <span class="pr">${s.price == null ? '—' : thb(s.price)}</span>
