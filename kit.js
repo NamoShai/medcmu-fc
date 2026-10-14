@@ -22,7 +22,7 @@ export const COLOURS = {
   sheen: '#a8505c',                                    // lighter maroon, for the fabric sheen
 };
 
-export const DAMASK = { src: 'assets/damask_tile.jpg', tileCm: 22 };   // physical width of one damask repeat
+export const DAMASK = { src: 'assets/damask_tile.jpg', tileCm: 12.9 };   // physical width of one damask repeat (Draft 10: 22 -> 12.9 cm, 1.7x finer)
 
 export const ASSETS = {
   crest: 'assets/crest.png',
@@ -87,7 +87,7 @@ export const SLOTS = [
 export const CLUB_MARKS = [
   { kind: 'logo', logo: 'crest', uv: [0.236, 0.768], w: 0.046 },
   { kind: 'name', text: 'PLAYER', number: '9', uv: [0.56, 0.72], w: 0.19 },
-  { kind: 'text', text: 'Medicine Football Club', uv: [0.56, 0.617], w: 0.115 },
+  { kind: 'text', text: 'Medicine CMU Football Club', uv: [0.56, 0.617], w: 0.122 },
 ];
 
 // Centre stripe, collar to hem on the FRONT only (as in the PSG reference: about 1/5 of the front width). Solid under the collar, fades to
@@ -182,7 +182,7 @@ export const JERSEYS = {
     marks: [
       { kind: 'logo', logo: 'crestNavy', uv: [0.2255, vCrest], w: crestW, m: [1.0504, -0.3059, -0.0638, 1.152, 0, 0] },
       { kind: 'name', text: 'PLAYER', number: '9', uv: [0.56, 0.72], w: 0.19 },
-      { kind: 'text', text: 'Medicine Football Club', uv: [0.56, 0.617], w: 0.115 },
+      { kind: 'text', text: 'Medicine CMU Football Club', uv: [0.56, 0.617], w: 0.122 },
     ],
     slots: {
       'front-centre': { uv: [0.1705, vSriphat], w: sw, h: sw / 3.413 },

@@ -204,6 +204,22 @@ function smooth(pts, n = 16) {
 }
 const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
+// Draft 10: at the finer repeat the tile's own row/column brightness drift (a few dark horizontal and vertical bands per tile, ~12 % darker, mirror axes) shows as
+// a plaid grid across the shirt. Normalise every row and every column of the tile to the tile's mean brightness (a gain, so the motif keeps its contrast and the
+// base red keeps its hue), and trim the dark 6 px line along the tile edge first (the tile is mirror-symmetric, so the trimmed tile stays seamless).
+function flattenTile(full, trim = 18) {
+  const w = full.width - 2 * trim, h = full.height - 2 * trim, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(full, -trim, -trim);
+  const D = x.getImageData(0, 0, w, h), d = D.data, lum = (i) => 0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2];
+  const rm = new Float64Array(h), cm = new Float64Array(w); let m = 0;
+  for (let y = 0; y < h; y++) for (let xx = 0; xx < w; xx++) { const l = lum((y * w + xx) * 4); rm[y] += l / w; cm[xx] += l / h; m += l / (w * h); }
+  const sm = (a, r) => a.map((_, i) => { let s = 0, n = 0; for (let k = -r; k <= r; k++) { const j = (i + k + a.length) % a.length; s += a[j]; n++; } return s / n; });
+  const rs = sm(rm, 40), cs = sm(cm, 40);                       // the wide trend only: keep the motif's own row-to-row structure
+  for (let y = 0; y < h; y++) for (let xx = 0; xx < w; xx++) { const i = (y * w + xx) * 4, g = (m / rs[y]) * (m / cs[xx]); for (let k = 0; k < 3; k++) d[i + k] = Math.min(255, d[i + k] * g); }
+  x.putImageData(D, 0, 0);
+  return c;
+}
+
 // damask: one continuous pattern across the whole UV sheet, scaled to a real-world repeat size, so pieces never stretch
 function paintDamask(ctx, imgs, k, w, h) {
   const pat = ctx.createPattern(imgs.damask, 'repeat');
@@ -668,7 +684,7 @@ async function boot() {
     fetch('assets/trim.json').then((r) => r.json()),
     ...Object.values(ASSETS).map(loadImg),
   ]);
-  const imgs = { damask }; Object.keys(ASSETS).forEach((k, i) => { imgs[k] = logos[i]; });
+  const imgs = { damask: flattenTile(damask) }; Object.keys(ASSETS).forEach((k, i) => { imgs[k] = logos[i]; });
 
   const meshes = {};
   gltf.scene.traverse((o) => { if (o.isMesh) meshes[o.name || o.geometry.name] = o; });

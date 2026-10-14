@@ -31,6 +31,8 @@ Live: https://namoshai.github.io/medcmu-fc/ · repo `NamoShai/medcmu-fc` (public
 
 - **2026-10-14 · Draft 9 round 2.** Torso now a flat chest plate (+1.5 cm) with a flat abdomen (no lobes); side panels end in pointed lens shapes top and bottom with smooth lines (no hooks, no black outside the piping); partner logo plates equal height. Shots `screenshots/v9k_*`.
 
+- **2026-10-14 · Draft 10 (local, not pushed).** Back line now "Medicine CMU Football Club" on all jerseys; damask 1.7x finer (22 -> 12.9 cm repeat) with the tile's banding removed so no plaid grid shows. Shots `screenshots/draft10_*`.
+
 ## Open / next
 - Push the pending wording commit (`git push`), then confirm it's live.
 - Namo tests on a real phone: spin, pinch zoom, one-finger pan when zoomed, tap a spot.
