@@ -64,7 +64,7 @@ export const SLOTS = [
     size: 'Not stated in the proposal', visibility: 'Front of the shirt, seen head-on' },
   // Sleeves: the wearer's LEFT sleeve is the pattern piece on the viewer's right in the front view (u 0.37-0.60), the wearer's RIGHT sleeve the one on the viewer's left (u 0.05-0.28).
   { id: 'sleeve-left', label: 'Left sleeve', status: 'taken', sponsor: 'ASURA', tier: null, price: null,          // no price given for ASURA: none is shown
-    kind: 'logo', logo: 'asura', uv: [0.485, 0.262], w: 0.066, h: 0.066,
+    kind: 'logo', logo: 'asura', uv: [0.485, 0.262], w: 0.048, h: 0.052,   // small and neat: about 60% of the first size, a touch under the right-sleeve pack's height
     size: 'Not stated in the proposal', visibility: 'Sleeve, seen from the side' },
   { id: 'sleeve-right', label: 'Right sleeve', status: 'taken', sponsor: 'AED4ALL + Progresso', tier: 'bronze', price: 5000,   // the two share one spot: THB 5,000 together
     kind: 'logo', logo: 'sleevePack', uv: [0.165, 0.262], w: 0.066, h: 0.066,
