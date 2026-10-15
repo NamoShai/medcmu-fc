@@ -276,6 +276,7 @@ function buildCollarTexture(imgs, J) {
 
 const slotsFor = (J) => SLOTS.map((s) => ({ ...s, ...(J.slots[s.id] || {}) }));   // Jersey 2 moves some UV rects; ids, tiers and prices are shared
 let curSlots = SLOTS;
+let showSponsors = true;                       // Draft 11: the Sponsors toggle; off = the kit is painted without the taken-sponsor logos (club marks stay)
 
 function buildShirtTexture(imgs, trim, J) {
   const STRIPE = J.stripe, slots = slotsFor(J);
@@ -357,7 +358,7 @@ function buildShirtTexture(imgs, trim, J) {
   if (cf.colour) for (const sl of trim.sleeves) for (let i = 0; i < (cf.n || 2); i++) paintBlue(ctx, imgs, k, X(sl.u0 - 0.01), Y(sl.hem + cf.y0 + cf.h + i * (cf.h + (cf.gap || 0))), (sl.u1 - sl.u0 + 0.02) * k, cf.h * k, cf.colour);
 
   for (const m of J.marks) paintSlot(ctx, m, imgs, k, X, Y);
-  for (const sl of slots) if (sl.status === 'taken') paintSlot(ctx, sl, imgs, k, X, Y);
+  if (showSponsors) for (const sl of slots) if (sl.status === 'taken') paintSlot(ctx, sl, imgs, k, X, Y);
 
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -799,6 +800,14 @@ async function boot() {
   }
   document.querySelectorAll('.jbtn').forEach((b) => b.addEventListener('click', () => switchJersey(+b.dataset.jersey)));
   addEventListener('hashchange', () => switchJersey(jerseyFromHash()));
+  // Draft 11: repaint the current kit in place (no fade, no camera change); an open card keeps its hotspot highlight and placeholder
+  $('sponsor-tgl').addEventListener('click', (e) => {
+    if (switching) return;
+    showSponsors = !showSponsors; e.currentTarget.setAttribute('aria-pressed', showSponsors);
+    paintJersey(JERSEYS[jersey]);
+    hotspots.forEach((h) => h.el.classList.toggle('on', h.slot.id === activeId));
+    setPlaceholder(curSlots.find((x) => x.id === activeId) || null);
+  });
   paintJersey(JERSEYS[jersey]); syncButtons();
 
   resize();
@@ -808,7 +817,7 @@ async function boot() {
     const url = renderer.domElement.toDataURL('image/png'); renderer.setPixelRatio(pr); resize(); return url;
   }
   $('loading').classList.add('gone');
-  window.__kit = { M, S, V, azimuth, hotspots, swayU, camera, shirtTex: shirtMat.map, HI_RES, switchJersey, shot, body: (P) => { body(P); paintJersey(JERSEYS[jersey]); }, get jersey() { return jersey; }, get float() { return floatY; } };      // used by the Playwright checks
+  window.__kit = { M, S, V, azimuth, hotspots, swayU, camera, shirtTex: shirtMat.map, HI_RES, switchJersey, shot, body: (P) => { body(P); paintJersey(JERSEYS[jersey]); }, get jersey() { return jersey; }, get sponsors() { return showSponsors; }, get float() { return floatY; } };      // used by the Playwright checks
   let last = performance.now();
   renderer.setAnimationLoop((now) => {
     const dt = Math.min(0.033, Math.max(0.001, (now - last) / 1000)); last = now;

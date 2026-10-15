@@ -33,6 +33,8 @@ Live: https://namoshai.github.io/medcmu-fc/ · repo `NamoShai/medcmu-fc` (public
 
 - **2026-10-14 · Draft 10 (local, not pushed).** Back line now "Medicine CMU Football Club" on all jerseys; damask 1.7x finer (22 -> 12.9 cm repeat) with the tile's banding removed so no plaid grid shows. Shots `screenshots/draft10_*`.
 
+- **2026-10-15 · Draft 11 (local, not pushed).** "Sponsors" on/off switch under the viewer, in the view-chip row (default ON, `aria-pressed`, 44 px tall, maroon when on, visible focus ring). OFF repaints the current kit without the taken-sponsor logos (Sriphat, Inseethong Gold, ASURA, AED4ALL/Progresso); crest, PLAYER 9, club line, shorts, piping, panels and damask stay. Repaint in place, no fade, no camera change; state survives jersey switches and view changes; hotspots still open their cards. Shots `screenshots/draft11_*`.
+
 ## Open / next
 - Push the pending wording commit (`git push`), then confirm it's live.
 - Namo tests on a real phone: spin, pinch zoom, one-finger pan when zoomed, tap a spot.

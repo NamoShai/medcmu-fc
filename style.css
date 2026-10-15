@@ -78,6 +78,15 @@ h1 { margin: 0; font-weight: 600; font-size: clamp(28px, 5vw, 44px); line-height
 .chip { font: 500 14px Inter, sans-serif; padding: 9px 18px; min-height: 44px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
 .chip:hover { border-color: var(--maroon); }
 .chip.active { background: var(--maroon); border-color: var(--maroon); color: var(--maroon-ink); }
+.tgl { display: inline-flex; align-items: center; gap: 10px; font: 500 14px Inter, sans-serif; padding: 9px 16px 9px 12px; min-height: 44px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.tgl:hover { border-color: var(--maroon); }
+.tgl:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.tgl-track { position: relative; width: 34px; height: 20px; border-radius: 999px; background: var(--line); transition: background .2s; flex: none; }
+.tgl-track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .2s; }
+.tgl[aria-pressed="true"] { border-color: var(--maroon); }
+.tgl[aria-pressed="true"] .tgl-track { background: var(--maroon); }
+.tgl[aria-pressed="true"] .tgl-track::after { transform: translateX(14px); }
+@media (prefers-reduced-motion: reduce) { .tgl-track, .tgl-track::after { transition: none; } }
 
 .block { padding-top: clamp(56px, 9vw, 104px); padding-bottom: 8px; }
 #why, #contact { border-top: 1px solid var(--line); margin-top: clamp(40px, 6vw, 72px); }
